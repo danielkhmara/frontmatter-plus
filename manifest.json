@@ -1,0 +1,10 @@
+{
+  "id": "frontmatter-plus",
+  "name": "Frontmatter Plus",
+  "version": "1.0.0",
+  "minAppVersion": "1.5.0",
+  "description": "Smart frontmatter automation and file metrics for the vault.",
+  "author": "Daniel Khmara",
+  "authorUrl": "https://github.com/danielkhmara",
+  "isDesktopOnly": false
+}

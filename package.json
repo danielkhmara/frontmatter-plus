@@ -1,0 +1,29 @@
+{
+  "name": "frontmatter-plus",
+  "version": "1.0.0",
+  "description": "Smart frontmatter automation and file metrics for the vault.",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production"
+  },
+  "keywords": [
+    "obsidian",
+    "obsidian-plugin",
+    "frontmatter",
+    "yaml"
+  ],
+  "author": "Daniel Khmara",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/danielkhmara/frontmatter-plus.git"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "esbuild": "^0.25.0",
+    "obsidian": "latest",
+    "tslib": "^2.6.2",
+    "typescript": "^5.3.3"
+  }
+}

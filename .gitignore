@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# Build / editor
+*.js.map
+.DS_Store
+Thumbs.db
+*.log
+
+# Local convenience pack (same 3 files as GitHub Release)
+release/
+
+# Obsidian / local
+data.json
+.obsidian/
+
+# npm
+npm-debug.log*
