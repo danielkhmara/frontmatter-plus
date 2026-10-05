@@ -2,7 +2,7 @@ import { App, TFile } from "obsidian";
 import type FrontmatterPlusPlugin from "./main";
 import { DEFAULT_SETTINGS } from "./settings";
 import type { FrontmatterPlusSettings } from "./settings";
-import { formatNow, formatTimestamp } from "./time";
+import { formatTimestamp } from "./time";
 import { asRecord, recordGet, recordSet } from "./utils";
 
 function isEmptyValue(value: unknown): boolean {
@@ -119,10 +119,6 @@ export class FrontmatterService {
     return at !== undefined && Date.now() - at < 1200;
   }
 
-  formatNow(): string {
-    return formatNow(this.settings.dateFormat);
-  }
-
   async fillEmptyExisting(): Promise<number> {
     const createdKey = this.settings.createdKey;
     const updatedKey = this.settings.updatedKey;
@@ -176,13 +172,13 @@ export class FrontmatterService {
     return content.slice(end + 4).replace(/^\r?\n/, "");
   }
 
-  scheduleCreate(file: TFile): void {
+  scheduleCreate(file: TFile, createdAt: number): void {
     if (this.isExcluded(file) || file.extension !== "md") return;
     this.cancelCreateTimer(file.path);
     const delay = Math.max(0, this.settings.createDelayMs);
     const timer = window.setTimeout(() => {
       this.createTimers.delete(file.path);
-      void this.run(file, "create");
+      void this.run(file, "create", createdAt);
     }, delay);
     this.createTimers.set(file.path, timer);
   }
@@ -191,10 +187,11 @@ export class FrontmatterService {
     if (this.isExcluded(file) || file.extension !== "md") return;
     if (this.isSelfWrite(file)) return;
     this.cancelUpdateTimer(file.path);
+    const modifiedAt = Date.now();
     const delay = Math.max(0, this.settings.updateDelayMs);
     const timer = window.setTimeout(() => {
       this.updateTimers.delete(file.path);
-      void this.run(file, "modify");
+      void this.run(file, "modify", modifiedAt);
     }, delay);
     this.updateTimers.set(file.path, timer);
   }
@@ -215,7 +212,7 @@ export class FrontmatterService {
     }
   }
 
-  private async run(file: TFile, mode: ApplyMode): Promise<void> {
+  private async run(file: TFile, mode: ApplyMode, eventAt: number): Promise<void> {
     if (!file || this.isExcluded(file) || this.processing.has(file.path)) return;
     if (this.plugin.pathSync?.isSuppressed(file.path)) return;
 
@@ -274,13 +271,17 @@ export class FrontmatterService {
       }
     }
 
-    const wrote = await this.write(file, {
-      insertCreated,
-      insertUpdated,
-      fillCreated,
-      fillUpdated,
-      touchUpdated,
-    });
+    const wrote = await this.write(
+      file,
+      {
+        insertCreated,
+        insertUpdated,
+        fillCreated,
+        fillUpdated,
+        touchUpdated,
+      },
+      eventAt
+    );
 
     this.lastContentHash.set(file.path, hash);
     if (wrote) this.lastWriteAt.set(file.path, Date.now());
@@ -294,13 +295,14 @@ export class FrontmatterService {
       fillCreated: boolean;
       fillUpdated: boolean;
       touchUpdated: boolean;
-    }
+    },
+    eventAt: number
   ): Promise<boolean> {
     if (this.processing.has(file.path)) return false;
 
     const createdKey = this.settings.createdKey;
     const updatedKey = this.settings.updatedKey;
-    const now = this.formatNow();
+    const timestamp = formatTimestamp(eventAt, this.settings.dateFormat);
     const cache = this.app.metadataCache.getFileCache(file);
     const current = asRecord(cache?.frontmatter) ?? {};
 
@@ -312,7 +314,7 @@ export class FrontmatterService {
     if (opts.insertUpdated && !hasUpdated) willChange = true;
     if (opts.fillCreated && hasCreated && isEmptyValue(recordGet(current, createdKey))) willChange = true;
     if (opts.fillUpdated && hasUpdated && isEmptyValue(recordGet(current, updatedKey))) willChange = true;
-    if (opts.touchUpdated && hasUpdated && String(recordGet(current, updatedKey) ?? "") !== now) {
+    if (opts.touchUpdated && hasUpdated && String(recordGet(current, updatedKey) ?? "") !== timestamp) {
       willChange = true;
     }
 
@@ -326,20 +328,20 @@ export class FrontmatterService {
         const existsCreated = Object.prototype.hasOwnProperty.call(fm, createdKey);
         const existsUpdated = Object.prototype.hasOwnProperty.call(fm, updatedKey);
 
-        if (opts.insertCreated && !existsCreated) recordSet(fm, createdKey, now);
+        if (opts.insertCreated && !existsCreated) recordSet(fm, createdKey, timestamp);
         else if (opts.fillCreated && existsCreated && isEmptyValue(recordGet(fm, createdKey))) {
-          recordSet(fm, createdKey, now);
+          recordSet(fm, createdKey, timestamp);
         }
 
-        if (opts.insertUpdated && !existsUpdated) recordSet(fm, updatedKey, now);
+        if (opts.insertUpdated && !existsUpdated) recordSet(fm, updatedKey, timestamp);
         else if (opts.fillUpdated && existsUpdated && isEmptyValue(recordGet(fm, updatedKey))) {
-          recordSet(fm, updatedKey, now);
+          recordSet(fm, updatedKey, timestamp);
         } else if (
           opts.touchUpdated &&
           existsUpdated &&
-          String(recordGet(fm, updatedKey) ?? "") !== now
+          String(recordGet(fm, updatedKey) ?? "") !== timestamp
         ) {
-          recordSet(fm, updatedKey, now);
+          recordSet(fm, updatedKey, timestamp);
         }
       });
       return true;

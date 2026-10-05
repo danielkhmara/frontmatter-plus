@@ -60,9 +60,10 @@ export default class FrontmatterPlusPlugin extends Plugin {
       this.app.vault.on("create", (file) => {
         if (!(file instanceof TFile) || file.extension !== "md") return;
         if (this.pathSync.isSuppressed(file.path)) return;
+        const createdAt = Date.now();
         void (async () => {
           await this.templateRouter.maybeApply(file);
-          this.service.scheduleCreate(file);
+          this.service.scheduleCreate(file, createdAt);
         })();
       })
     );
