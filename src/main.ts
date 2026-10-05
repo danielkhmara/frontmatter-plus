@@ -56,17 +56,20 @@ export default class FrontmatterPlusPlugin extends Plugin {
     this.statusBarClock.onload();
     this.addSettingTab(new FrontmatterPlusSettingTab(this.app, this));
 
-    this.registerEvent(
-      this.app.vault.on("create", (file) => {
-        if (!(file instanceof TFile) || file.extension !== "md") return;
-        if (this.pathSync.isSuppressed(file.path)) return;
-        const createdAt = Date.now();
-        void (async () => {
-          await this.templateRouter.maybeApply(file, createdAt);
-          this.service.scheduleCreate(file, createdAt);
-        })();
-      })
-    );
+    this.app.workspace.onLayoutReady(() => {
+      this.registerEvent(
+        this.app.vault.on("create", (file) => {
+          if (!(file instanceof TFile) || file.extension !== "md") return;
+          if (this.pathSync.isSuppressed(file.path)) return;
+          const createdAt = Date.now();
+          void (async () => {
+            const copySources = await this.service.findCopySources(file);
+            await this.templateRouter.maybeApply(file, createdAt);
+            this.service.scheduleCreate(file, createdAt, copySources);
+          })();
+        })
+      );
+    });
 
     this.registerEvent(
       this.app.workspace.on("editor-change", (_editor, info) => {

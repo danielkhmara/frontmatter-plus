@@ -236,13 +236,31 @@ export class FrontmatterService {
     return content.slice(end + 4).replace(/^\r?\n/, "");
   }
 
-  scheduleCreate(file: TFile, createdAt: number): void {
+  async findCopySources(file: TFile): Promise<string[]> {
+    if (file.stat.size === 0) return [];
+    const candidates = this.app.vault
+      .getMarkdownFiles()
+      .filter((other) => other.path !== file.path && other.stat.size === file.stat.size);
+    if (candidates.length === 0) return [];
+
+    const content = await this.app.vault.read(file);
+    const sources: string[] = [];
+    for (const other of candidates) {
+      if ((await this.app.vault.cachedRead(other)) === content) sources.push(other.path);
+    }
+    return sources;
+  }
+
+  scheduleCreate(file: TFile, createdAt: number, copySources: string[]): void {
     if (this.isExcluded(file) || file.extension !== "md") return;
     this.cancelCreateTimer(file.path);
     const delay = Math.max(0, this.settings.createDelayMs);
     const timer = window.setTimeout(() => {
       this.createTimers.delete(file.path);
-      void this.run(file, "create", createdAt);
+      const isCopy = copySources.some(
+        (path) => this.app.vault.getAbstractFileByPath(path) instanceof TFile
+      );
+      void this.run(file, "create", createdAt, isCopy);
     }, delay);
     this.createTimers.set(file.path, timer);
   }
@@ -281,7 +299,12 @@ export class FrontmatterService {
     }
   }
 
-  private async run(file: TFile, mode: ApplyMode, eventAt: number): Promise<void> {
+  private async run(
+    file: TFile,
+    mode: ApplyMode,
+    eventAt: number,
+    resetDates = false
+  ): Promise<void> {
     if (!file || this.isExcluded(file) || this.processing.has(file.path)) return;
     if (this.plugin.pathSync?.isSuppressed(file.path)) return;
 
@@ -347,6 +370,8 @@ export class FrontmatterService {
         fillCreated,
         fillUpdated,
         touchUpdated,
+        resetCreated: resetDates && hasCreated,
+        resetUpdated: resetDates && hasUpdated,
       },
       eventAt
     );
@@ -364,6 +389,8 @@ export class FrontmatterService {
       fillCreated: boolean;
       fillUpdated: boolean;
       touchUpdated: boolean;
+      resetCreated: boolean;
+      resetUpdated: boolean;
     },
     eventAt: number
   ): Promise<boolean> {
@@ -384,6 +411,8 @@ export class FrontmatterService {
     if (opts.touchUpdated && hasUpdated && String(recordGet(current, updatedKey) ?? "") !== timestamp) {
       willChange = true;
     }
+    if (opts.resetCreated && String(recordGet(current, createdKey) ?? "") !== timestamp) willChange = true;
+    if (opts.resetUpdated && String(recordGet(current, updatedKey) ?? "") !== timestamp) willChange = true;
 
     if (!willChange) return false;
 
@@ -396,11 +425,13 @@ export class FrontmatterService {
         const existsUpdated = Object.prototype.hasOwnProperty.call(fm, updatedKey);
 
         if (opts.insertCreated && !existsCreated) recordSet(fm, createdKey, timestamp);
+        else if (opts.resetCreated && existsCreated) recordSet(fm, createdKey, timestamp);
         else if (opts.fillCreated && existsCreated && isEmptyValue(recordGet(fm, createdKey))) {
           recordSet(fm, createdKey, timestamp);
         }
 
         if (opts.insertUpdated && !existsUpdated) recordSet(fm, updatedKey, timestamp);
+        else if (opts.resetUpdated && existsUpdated) recordSet(fm, updatedKey, timestamp);
         else if (opts.fillUpdated && existsUpdated && isEmptyValue(recordGet(fm, updatedKey))) {
           recordSet(fm, updatedKey, timestamp);
         } else if (
