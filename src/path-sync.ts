@@ -80,8 +80,8 @@ export class PathSync {
     });
     s.folderTemplates = rules;
 
-    this.plugin.service.renameHash(oldPath, newPath);
-    this.plugin.service.onUnloadFile(oldPath);
+    this.plugin.service.renamePath(oldPath, newPath);
+    this.plugin.focusSession?.renamePath(oldPath, newPath);
 
     if (file instanceof TFolder) {
       for (const child of this.plugin.app.vault.getMarkdownFiles()) {

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { PathSync } from "../src/path-sync";
 import { localTime, settle, useClock } from "./support/clock";
-import { note, property } from "./support/notes";
+import { note, property, stamp } from "./support/notes";
 import { createPlugin } from "./support/plugin";
 
 const T0 = localTime(2026, 10, 5, 12, 0);
@@ -165,5 +165,70 @@ describe("remembered content after a rename", () => {
     context.plugin.service.scheduleUpdate(file);
     await settle();
     assert.equal(property(context.vault, file, "updated"), "2025-05-05T10:00:00");
+  });
+});
+
+describe("pending work after a rename", () => {
+  it("still fills dates of a new note renamed before the delay ends", async (t) => {
+    useClock(t, T0);
+    const context = setup({ createDelayMs: 30 });
+    const file = context.vault.add("Untitled.md", note("created:\nupdated:"));
+    context.plugin.service.scheduleCreate(file, T0, []);
+    await rename(context, "Untitled.md", "Projects/Launch plan.md");
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    assert.equal(property(context.vault, file, "created"), stamp(T0));
+    assert.equal(property(context.vault, file, "updated"), stamp(T0));
+  });
+
+  it("still updates the date of a note edited and then renamed", async (t) => {
+    useClock(t, T0);
+    const context = setup({ updateDelayMs: 30 });
+    const content = note("created: 2024-01-01T10:00:00\nupdated: 2025-05-05T10:00:00");
+    const file = context.vault.add("Notes/Plan.md", content);
+    await context.plugin.service.rememberContent(file);
+    context.plugin.service.markUserEdit(file.path);
+    await context.vault.modify(file, content.replace("Body text", "Edited text"));
+    context.plugin.service.scheduleUpdate(file);
+    await rename(context, "Notes/Plan.md", "Notes/Roadmap.md");
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    assert.equal(property(context.vault, file, "updated"), stamp(T0));
+  });
+
+  it("moves pending work of every note inside a renamed folder", async (t) => {
+    useClock(t, T0);
+    const context = setup({ createDelayMs: 30 });
+    const first = context.vault.add("Drafts/A.md", note("created:"));
+    const second = context.vault.add("Drafts/Deep/B.md", note("created:"));
+    context.plugin.service.scheduleCreate(first, T0, []);
+    context.plugin.service.scheduleCreate(second, T0, []);
+    await rename(context, "Drafts", "Projects");
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    assert.equal(property(context.vault, first, "created"), stamp(T0));
+    assert.equal(property(context.vault, second, "created"), stamp(T0));
+  });
+});
+
+describe("cleanup after a rename", () => {
+  it("cancels pending work of a renamed note when it is removed", async (t) => {
+    useClock(t, T0);
+    const context = setup({ createDelayMs: 30 });
+    const file = context.vault.add("Untitled.md", note("created:"));
+    context.plugin.service.scheduleCreate(file, T0, []);
+    await rename(context, "Untitled.md", "Projects/Launch plan.md");
+    context.plugin.service.onUnloadFile("Projects/Launch plan.md");
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    assert.equal(context.vault.writes(file.path), 0);
+  });
+
+  it("passes the rename on to the editing time", async (t) => {
+    useClock(t, T0);
+    const context = setup();
+    const renames: [string, string][] = [];
+    (context.plugin as unknown as { focusSession: unknown }).focusSession = {
+      renamePath: (from: string, to: string) => renames.push([from, to]),
+    };
+    context.vault.add("Notes/Plan.md", "Text");
+    await rename(context, "Notes/Plan.md", "Notes/Roadmap.md");
+    assert.deepEqual(renames, [["Notes/Plan.md", "Notes/Roadmap.md"]]);
   });
 });

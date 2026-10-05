@@ -35,7 +35,7 @@ export function createPlugin(overrides: Partial<FrontmatterPlusSettings> = {}): 
       ...overrides,
     },
     pathSync: { isSuppressed: () => false },
-    focusSession: { getDisplay: () => plugin.focusDisplay },
+    focusSession: { getDisplay: () => plugin.focusDisplay, renamePath: () => undefined },
     focusDisplay: null as string | null,
     openFiles: [] as TFile[],
     statusBarItems: [] as FakeElement[],

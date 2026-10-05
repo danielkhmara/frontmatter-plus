@@ -61,6 +61,28 @@ describe("editing time", () => {
     assert.equal(tracker.getDisplay("Projects/Plan.md"), "0:05");
   });
 
+  it("keeps the time when the open note is renamed", (t) => {
+    const { clock, workspace, tracker, plan } = setup(t);
+    clock.advance(30000);
+    const file = plan.file!;
+    tracker.renamePath(file.path, "Projects/Roadmap.md");
+    file.path = "Projects/Roadmap.md";
+    workspace.trigger("layout-change");
+    clock.advance(5000);
+    assert.equal(tracker.getDisplay("Projects/Roadmap.md"), "0:35");
+    assert.equal(tracker.getDisplay("Projects/Plan.md"), "");
+  });
+
+  it("keeps the time of notes inside a renamed folder", (t) => {
+    const { clock, workspace, tracker, plan, notes } = setup(t);
+    clock.advance(10000);
+    tracker.renamePath("Projects", "Work");
+    plan.file!.path = "Work/Plan.md";
+    notes.file!.path = "Work/Notes.md";
+    workspace.trigger("layout-change");
+    assert.equal(tracker.getDisplay("Work/Plan.md"), "0:10");
+  });
+
   it("shows nothing for notes that were never opened", (t) => {
     const { tracker } = setup(t);
     assert.equal(tracker.getDisplay("Projects/Other.md"), "");

@@ -1,7 +1,7 @@
 import { TFile } from "obsidian";
 import type FrontmatterPlusPlugin from "./main";
 import { formatNow, formatTimestamp } from "./time";
-import { escapeRegExp } from "./utils";
+import { escapeRegExp, frontmatterEnd } from "./utils";
 
 export class TemplateRouter {
   private plugin: FrontmatterPlusPlugin;
@@ -60,8 +60,7 @@ export class TemplateRouter {
   }
 
   private fillEmptyDates(content: string, createdAt: number): string {
-    if (!content.startsWith("---")) return content;
-    const end = content.indexOf("\n---", 3);
+    const end = frontmatterEnd(content);
     if (end === -1) return content;
 
     const { createdKey, updatedKey, dateFormat } = this.plugin.settings;

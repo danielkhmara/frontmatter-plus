@@ -2,7 +2,14 @@ import { App, parseYaml, TFile } from "obsidian";
 import type FrontmatterPlusPlugin from "./main";
 import { normalizeSettings, type FrontmatterPlusSettings } from "./settings";
 import { formatTimestamp } from "./time";
-import { asRecord, recordGet, recordSet } from "./utils";
+import {
+  asRecord,
+  frontmatterEnd,
+  frontmatterText,
+  recordGet,
+  recordSet,
+  stripFrontmatter,
+} from "./utils";
 
 function isEmptyValue(value: unknown): boolean {
   if (value === undefined || value === null) return true;
@@ -58,10 +65,18 @@ type ApplyMode = "create" | "modify";
 const USER_EDIT_WINDOW_MS = 10000;
 const TRAILING_BLANK_LINES = /(?:\r?\n[ \t]*)+$/;
 
+function movePaths<V>(map: Map<string, V>, oldPath: string, newPath: string): void {
+  for (const [path, value] of Array.from(map)) {
+    if (path !== oldPath && !path.startsWith(`${oldPath}/`)) continue;
+    map.delete(path);
+    map.set(newPath + path.slice(oldPath.length), value);
+  }
+}
+
 function withoutTrailingBlankLines(content: string): string {
   const cleaned = content.replace(TRAILING_BLANK_LINES, "");
-  const frontmatterEnd = cleaned.startsWith("---") ? cleaned.indexOf("\n---", 3) : -1;
-  if (frontmatterEnd === -1 || frontmatterEnd + 4 !== cleaned.length) return cleaned;
+  const end = frontmatterEnd(cleaned);
+  if (end === -1 || end + 4 !== cleaned.length) return cleaned;
   return cleaned + (content.includes("\r\n") ? "\r\n" : "\n");
 }
 
@@ -108,22 +123,12 @@ export class FrontmatterService {
     this.userEditAt.delete(path);
   }
 
-  renameHash(oldPath: string, newPath: string): void {
-    const hash = this.lastContentHash.get(oldPath);
-    if (hash !== undefined) {
-      this.lastContentHash.set(newPath, hash);
-      this.lastContentHash.delete(oldPath);
-    }
-    const wrote = this.lastWriteAt.get(oldPath);
-    if (wrote !== undefined) {
-      this.lastWriteAt.set(newPath, wrote);
-      this.lastWriteAt.delete(oldPath);
-    }
-    const edited = this.userEditAt.get(oldPath);
-    if (edited !== undefined) {
-      this.userEditAt.set(newPath, edited);
-      this.userEditAt.delete(oldPath);
-    }
+  renamePath(oldPath: string, newPath: string): void {
+    movePaths(this.createTimers, oldPath, newPath);
+    movePaths(this.updateTimers, oldPath, newPath);
+    movePaths(this.lastContentHash, oldPath, newPath);
+    movePaths(this.lastWriteAt, oldPath, newPath);
+    movePaths(this.userEditAt, oldPath, newPath);
   }
 
   markUserEdit(path: string): void {
@@ -160,7 +165,7 @@ export class FrontmatterService {
 
   private fingerprint(content: string): string {
     return contentFingerprint(
-      this.stripFrontmatter(content),
+      stripFrontmatter(content),
       this.parseFrontmatter(content),
       this.settings.createdKey,
       this.settings.updatedKey,
@@ -244,21 +249,13 @@ export class FrontmatterService {
   }
 
   private parseFrontmatter(content: string): Record<string, unknown> | null {
-    if (!content.startsWith("---")) return null;
-    const end = content.indexOf("\n---", 3);
-    if (end === -1) return null;
+    const yaml = frontmatterText(content);
+    if (yaml === null) return null;
     try {
-      return asRecord(parseYaml(content.slice(content.indexOf("\n") + 1, end))) ?? {};
+      return asRecord(parseYaml(yaml)) ?? {};
     } catch {
       return null;
     }
-  }
-
-  stripFrontmatter(content: string): string {
-    if (!content.startsWith("---")) return content;
-    const end = content.indexOf("\n---", 3);
-    if (end === -1) return content;
-    return content.slice(end + 4).replace(/^\r?\n/, "");
   }
 
   async findCopySources(file: TFile): Promise<string[]> {
@@ -330,8 +327,7 @@ export class FrontmatterService {
     eventAt: number,
     resetDates = false
   ): Promise<void> {
-    if (!file || this.isExcluded(file) || this.processing.has(file.path)) return;
-    if (this.plugin.pathSync?.isSuppressed(file.path)) return;
+    if (this.isExcluded(file) || this.processing.has(file.path)) return;
 
     const content = await this.app.vault.read(file);
     const fm = this.parseFrontmatter(content);
@@ -348,36 +344,15 @@ export class FrontmatterService {
     const createdEmpty = !!(fm && hasCreated && isEmptyValue(recordGet(fm, createdKey)));
     const updatedEmpty = !!(fm && hasUpdated && isEmptyValue(recordGet(fm, updatedKey)));
 
-    let insertCreated = false;
-    let insertUpdated = false;
-    let fillCreated = false;
-    let fillUpdated = false;
-    let touchUpdated = false;
-
-    if (keyCount === 0) {
-      if (mode === "create") {
-        if (this.settings.autoInsertCreatedOnCreate) insertCreated = true;
-        if (this.settings.autoInsertUpdatedOnCreate) insertUpdated = true;
-      }
-    } else {
-      if (!hasCreated && this.settings.forceInsertCreated) insertCreated = true;
-      if (!hasUpdated && this.settings.forceInsertUpdated) insertUpdated = true;
-
-      if (this.settings.fillEmptyDateKeys) {
-        if (hasCreated && createdEmpty) fillCreated = true;
-        if (hasUpdated && updatedEmpty) fillUpdated = true;
-      }
-
-      if (
-        mode === "modify" &&
-        contentChanged &&
-        (hasUpdated || insertUpdated) &&
-        !(hasUpdated && updatedEmpty && !fillUpdated)
-      ) {
-        if (hasUpdated && !updatedEmpty) touchUpdated = true;
-        else if (hasUpdated && fillUpdated) touchUpdated = false;
-      }
-    }
+    const s = this.settings;
+    const onCreate = mode === "create";
+    const insertCreated =
+      keyCount === 0 ? onCreate && s.autoInsertCreatedOnCreate : !hasCreated && s.forceInsertCreated;
+    const insertUpdated =
+      keyCount === 0 ? onCreate && s.autoInsertUpdatedOnCreate : !hasUpdated && s.forceInsertUpdated;
+    const fillCreated = s.fillEmptyDateKeys && createdEmpty;
+    const fillUpdated = s.fillEmptyDateKeys && updatedEmpty;
+    const touchUpdated = !onCreate && contentChanged && hasUpdated && !updatedEmpty;
 
     if (mode === "modify" && prevHash !== undefined && !contentChanged) {
       if (!insertCreated && !insertUpdated && !fillCreated && !fillUpdated) {

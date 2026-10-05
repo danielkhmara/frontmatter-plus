@@ -47,6 +47,18 @@ export class FocusSessionTracker {
     this.activePath = null;
   }
 
+  renamePath(oldPath: string, newPath: string): void {
+    const moved = (path: string): string | null =>
+      path === oldPath || path.startsWith(`${oldPath}/`) ? newPath + path.slice(oldPath.length) : null;
+    for (const [path, state] of Array.from(this.sessions)) {
+      const next = moved(path);
+      if (next === null) continue;
+      this.sessions.delete(path);
+      this.sessions.set(next, state);
+    }
+    if (this.activePath !== null) this.activePath = moved(this.activePath) ?? this.activePath;
+  }
+
   getDisplay(path: string): string {
     const ms = this.getElapsedMs(path);
     if (ms <= 0 && this.activePath !== path && !this.sessions.has(path)) return "";
