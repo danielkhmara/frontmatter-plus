@@ -1,3 +1,5 @@
+import { isRecord } from "./utils";
+
 export type PluginLocale = "en" | "de" | "zh" | "fr" | "ru";
 
 const PLUGIN_LOCALES: readonly PluginLocale[] = ["en", "de", "zh", "fr", "ru"];
@@ -83,4 +85,83 @@ export function isRuleComplete(rule: FolderTemplateRule): boolean {
 
 export function pruneIncompleteRules(rules: FolderTemplateRule[]): FolderTemplateRule[] {
   return rules.filter(isRuleComplete);
+}
+
+function asString(value: unknown, fallback: string): string {
+  return typeof value === "string" ? value : fallback;
+}
+
+function asNumber(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function asBoolean(value: unknown, fallback: boolean): boolean {
+  return typeof value === "boolean" ? value : fallback;
+}
+
+function asStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string");
+}
+
+function asFolderRules(value: unknown): FolderTemplateRule[] {
+  if (!Array.isArray(value)) return [];
+  const rules: FolderTemplateRule[] = [];
+  for (const item of value) {
+    if (!isRecord(item)) continue;
+    const templatePath = item.templatePath;
+    const folderPath = item.folderPath;
+    if (typeof templatePath !== "string" || typeof folderPath !== "string") continue;
+    rules.push({ templatePath, folderPath });
+  }
+  return rules;
+}
+
+export function normalizeSettings(raw: unknown): FrontmatterPlusSettings {
+  const data = isRecord(raw) ? raw : {};
+  const d = DEFAULT_SETTINGS;
+
+  const settings: FrontmatterPlusSettings = {
+    locale: typeof data.locale === "string" && isPluginLocale(data.locale) ? data.locale : d.locale,
+    createdKey: asString(data.createdKey, d.createdKey),
+    updatedKey: asString(data.updatedKey, d.updatedKey),
+    dateFormat: asString(data.dateFormat, d.dateFormat),
+    createDelayMs: asNumber(data.createDelayMs, d.createDelayMs),
+    updateDelayMs: asNumber(data.updateDelayMs, d.updateDelayMs),
+    autoInsertCreatedOnCreate: asBoolean(data.autoInsertCreatedOnCreate, d.autoInsertCreatedOnCreate),
+    autoInsertUpdatedOnCreate: asBoolean(data.autoInsertUpdatedOnCreate, d.autoInsertUpdatedOnCreate),
+    forceInsertCreated: asBoolean(data.forceInsertCreated, d.forceInsertCreated),
+    forceInsertUpdated: asBoolean(data.forceInsertUpdated, d.forceInsertUpdated),
+    fillEmptyDateKeys: asBoolean(data.fillEmptyDateKeys, d.fillEmptyDateKeys),
+    excludedFolders: asStringArray(data.excludedFolders),
+    excludedFiles: asStringArray(data.excludedFiles),
+    ignoredProperties: asStringArray(data.ignoredProperties),
+    showPropertiesBadge: asBoolean(data.showPropertiesBadge, d.showPropertiesBadge),
+    badgeScrollSpeed: asNumber(data.badgeScrollSpeed, d.badgeScrollSpeed),
+    showReadingTime: asBoolean(data.showReadingTime, d.showReadingTime),
+    showYamlCompleteness: asBoolean(data.showYamlCompleteness, d.showYamlCompleteness),
+    showFileSize: asBoolean(data.showFileSize, d.showFileSize),
+    showStaleWarning: asBoolean(data.showStaleWarning, d.showStaleWarning),
+    staleAfterDays: asNumber(data.staleAfterDays, d.staleAfterDays),
+    showFocusTimer: asBoolean(data.showFocusTimer, d.showFocusTimer),
+    showTasks: asBoolean(data.showTasks, d.showTasks),
+    showBacklinks: asBoolean(data.showBacklinks, d.showBacklinks),
+    showIsolated: asBoolean(data.showIsolated, d.showIsolated),
+    wordsPerMinute: asNumber(data.wordsPerMinute, d.wordsPerMinute),
+    folderTemplates: pruneIncompleteRules(asFolderRules(data.folderTemplates)),
+    showStatusBarClock: asBoolean(data.showStatusBarClock, d.showStatusBarClock),
+    statusBarDateFormat: asString(data.statusBarDateFormat, d.statusBarDateFormat),
+    statusBarTimeFormat: asString(data.statusBarTimeFormat, d.statusBarTimeFormat),
+  };
+
+  if (
+    data.autoInsertCreatedOnCreate === undefined &&
+    data.autoInsertUpdatedOnCreate === undefined &&
+    typeof data.autoInsertDatesOnCreate === "boolean"
+  ) {
+    settings.autoInsertCreatedOnCreate = data.autoInsertDatesOnCreate;
+    settings.autoInsertUpdatedOnCreate = data.autoInsertDatesOnCreate;
+  }
+
+  return settings;
 }

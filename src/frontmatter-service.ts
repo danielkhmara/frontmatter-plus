@@ -1,7 +1,6 @@
 import { App, parseYaml, TFile } from "obsidian";
 import type FrontmatterPlusPlugin from "./main";
-import { DEFAULT_SETTINGS } from "./settings";
-import type { FrontmatterPlusSettings } from "./settings";
+import { normalizeSettings, type FrontmatterPlusSettings } from "./settings";
 import { formatTimestamp } from "./time";
 import { asRecord, recordGet, recordSet } from "./utils";
 
@@ -485,14 +484,7 @@ export class FrontmatterService {
     const data = asRecord(parsed);
     if (!data) return false;
 
-    const ignored: unknown = data.ignoredProperties;
-    this.plugin.settings = {
-      ...DEFAULT_SETTINGS,
-      ...(data as Partial<FrontmatterPlusSettings>),
-      ignoredProperties: Array.isArray(ignored)
-        ? ignored.filter((key): key is string => typeof key === "string")
-        : [],
-    };
+    this.plugin.settings = normalizeSettings(data);
     await this.plugin.saveSettings();
     this.plugin.refreshContentBaselines();
     return true;

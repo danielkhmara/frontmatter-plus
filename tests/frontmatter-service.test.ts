@@ -5,6 +5,7 @@ import { bodyOf, frontmatterOf } from "./support/app";
 import { localTime, settle, useClock } from "./support/clock";
 import { note, property, stamp } from "./support/notes";
 import { createPlugin } from "./support/plugin";
+import { DEFAULT_SETTINGS, normalizeSettings } from "../src/settings";
 
 const T0 = localTime(2026, 10, 5, 12, 0);
 const OLD_CREATED = "2024-01-01T10:00:00";
@@ -399,6 +400,28 @@ describe("settings backup", () => {
     assert.ok(await plugin.service.importSettings());
     assert.equal(plugin.settings.createdKey, "createdAt");
     assert.deepEqual(plugin.settings.ignoredProperties, ["favorite"]);
+  });
+
+  it("checks imported values the same way as loaded settings", async () => {
+    const plugin = createPlugin();
+    const backup = {
+      locale: "fr",
+      createDelayMs: "fast",
+      updateDelayMs: 2000,
+      showBacklinks: "yes",
+      excludedFolders: ["Archive", 3],
+      folderTemplates: [{ templatePath: "", folderPath: "Projects" }],
+      unknownKey: true,
+    };
+    await plugin.app.vault.create("frontmatter-plus-settings.json", JSON.stringify(backup));
+    assert.ok(await plugin.service.importSettings());
+    assert.deepEqual(plugin.settings, normalizeSettings(backup));
+    assert.equal(plugin.settings.locale, "fr");
+    assert.equal(plugin.settings.createDelayMs, DEFAULT_SETTINGS.createDelayMs);
+    assert.equal(plugin.settings.updateDelayMs, 2000);
+    assert.equal(plugin.settings.showBacklinks, DEFAULT_SETTINGS.showBacklinks);
+    assert.deepEqual(plugin.settings.excludedFolders, ["Archive"]);
+    assert.deepEqual(plugin.settings.folderTemplates, []);
   });
 
   it("replaces an invalid list of ignored properties with an empty one", async () => {

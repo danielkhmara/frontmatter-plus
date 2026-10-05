@@ -10,12 +10,7 @@ import {
 } from "obsidian";
 import { t, tf } from "./i18n";
 import type FrontmatterPlusPlugin from "./main";
-import {
-  DEFAULT_SETTINGS,
-  isPluginLocale,
-  isRuleComplete,
-  pruneIncompleteRules,
-} from "./settings";
+import { isPluginLocale, isRuleComplete, normalizeSettings, pruneIncompleteRules } from "./settings";
 import { formatNow, toMomentLocale } from "./time";
 
 class FolderSuggest extends AbstractInputSuggest<TFolder> {
@@ -596,13 +591,7 @@ export class FrontmatterPlusSettingTab extends PluginSettingTab {
         btn.setButtonText(this.tr("resetButton"));
         btn.buttonEl.addClass("mod-destructive");
         btn.onClick(async () => {
-          this.plugin.settings = {
-            ...DEFAULT_SETTINGS,
-            excludedFolders: [],
-            excludedFiles: [],
-            ignoredProperties: [],
-            folderTemplates: [],
-          };
+          this.plugin.settings = normalizeSettings({});
           await this.plugin.saveSettings();
           this.plugin.refreshContentBaselines();
           this.redraw();
