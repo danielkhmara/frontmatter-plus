@@ -94,13 +94,7 @@ export default class FrontmatterPlusPlugin extends Plugin {
       })
     );
 
-    this.app.workspace.onLayoutReady(() => {
-      this.app.workspace.iterateAllLeaves((leaf) => {
-        if (leaf.view instanceof MarkdownView && leaf.view.file) {
-          void this.service.rememberContent(leaf.view.file);
-        }
-      });
-    });
+    this.app.workspace.onLayoutReady(() => this.rememberOpenFiles());
 
     this.registerEvent(
       this.app.vault.on("modify", (file) => {
@@ -134,6 +128,19 @@ export default class FrontmatterPlusPlugin extends Plugin {
     this.service?.clearTimers();
   }
 
+  rememberOpenFiles(): void {
+    this.app.workspace.iterateAllLeaves((leaf) => {
+      if (leaf.view instanceof MarkdownView && leaf.view.file) {
+        void this.service.rememberContent(leaf.view.file);
+      }
+    });
+  }
+
+  refreshContentBaselines(): void {
+    this.service.forgetContent();
+    this.rememberOpenFiles();
+  }
+
   async loadSettings(): Promise<void> {
     const raw: unknown = await this.loadData();
     const data = isRecord(raw) ? raw : {};
@@ -145,6 +152,7 @@ export default class FrontmatterPlusPlugin extends Plugin {
       folderTemplates: pruneIncompleteRules(asFolderRules(data.folderTemplates)),
       excludedFolders: asStringArray(data.excludedFolders),
       excludedFiles: asStringArray(data.excludedFiles),
+      ignoredProperties: asStringArray(data.ignoredProperties),
       createdKey: typeof data.createdKey === "string" ? data.createdKey : DEFAULT_SETTINGS.createdKey,
       updatedKey: typeof data.updatedKey === "string" ? data.updatedKey : DEFAULT_SETTINGS.updatedKey,
       dateFormat: typeof data.dateFormat === "string" ? data.dateFormat : DEFAULT_SETTINGS.dateFormat,

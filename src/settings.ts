@@ -25,6 +25,7 @@ export interface FrontmatterPlusSettings {
   fillEmptyDateKeys: boolean;
   excludedFolders: string[];
   excludedFiles: string[];
+  ignoredProperties: string[];
   showPropertiesBadge: boolean;
   badgeScrollSpeed: number;
   showReadingTime: boolean;
@@ -57,6 +58,7 @@ export const DEFAULT_SETTINGS: FrontmatterPlusSettings = {
   fillEmptyDateKeys: true,
   excludedFolders: [],
   excludedFiles: [],
+  ignoredProperties: [],
   showPropertiesBadge: true,
   badgeScrollSpeed: 30,
   showReadingTime: true,

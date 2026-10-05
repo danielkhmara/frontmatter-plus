@@ -34,12 +34,14 @@ function contentFingerprint(
   body: string,
   fm: Record<string, unknown> | null,
   createdKey: string,
-  updatedKey: string
+  updatedKey: string,
+  ignoredKeys: Set<string>
 ): string {
   const meta: string[] = [];
   if (fm) {
     for (const key of Object.keys(fm).sort()) {
       if (key === "position" || key === createdKey || key === updatedKey) continue;
+      if (ignoredKeys.has(key.trim().toLowerCase())) continue;
       meta.push(`${key}=${stableValue(recordGet(fm, key))}`);
     }
   }
@@ -134,12 +136,20 @@ export class FrontmatterService {
     this.lastContentHash.set(file.path, this.fingerprint(content));
   }
 
+  forgetContent(): void {
+    this.lastContentHash.clear();
+  }
+
   private fingerprint(content: string): string {
+    const ignored = Array.isArray(this.settings.ignoredProperties)
+      ? this.settings.ignoredProperties
+      : [];
     return contentFingerprint(
       this.stripFrontmatter(content),
       this.parseFrontmatter(content),
       this.settings.createdKey,
-      this.settings.updatedKey
+      this.settings.updatedKey,
+      new Set(ignored.filter((key) => typeof key === "string").map((key) => key.trim().toLowerCase()))
     );
   }
 
@@ -475,11 +485,16 @@ export class FrontmatterService {
     const data = asRecord(parsed);
     if (!data) return false;
 
+    const ignored: unknown = data.ignoredProperties;
     this.plugin.settings = {
       ...DEFAULT_SETTINGS,
       ...(data as Partial<FrontmatterPlusSettings>),
+      ignoredProperties: Array.isArray(ignored)
+        ? ignored.filter((key): key is string => typeof key === "string")
+        : [],
     };
     await this.plugin.saveSettings();
+    this.plugin.refreshContentBaselines();
     return true;
   }
 }

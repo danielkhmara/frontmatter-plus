@@ -73,6 +73,47 @@ class FileSuggest extends AbstractInputSuggest<TFile> {
   }
 }
 
+class PropertySuggest extends AbstractInputSuggest<string> {
+  constructor(
+    app: App,
+    inputEl: HTMLInputElement,
+    private getExcluded: () => string[],
+    private onSelectProperty: (key: string) => void
+  ) {
+    super(app, inputEl);
+  }
+
+  protected getSuggestions(query: string): string[] {
+    const q = query.trim().toLowerCase();
+    const excluded = new Set(this.getExcluded().map((key) => key.trim().toLowerCase()));
+    const keys = new Map<string, string>();
+    for (const file of this.app.vault.getMarkdownFiles()) {
+      const frontmatter = this.app.metadataCache.getFileCache(file)?.frontmatter;
+      if (!frontmatter) continue;
+      for (const key of Object.keys(frontmatter)) {
+        const normalized = key.trim().toLowerCase();
+        if (key === "position" || excluded.has(normalized) || keys.has(normalized)) continue;
+        keys.set(normalized, key);
+      }
+    }
+    return Array.from(keys.values())
+      .filter((key) => key.toLowerCase().includes(q))
+      .sort((a, b) => a.localeCompare(b))
+      .slice(0, 50);
+  }
+
+  renderSuggestion(key: string, el: HTMLElement): void {
+    el.setText(key);
+  }
+
+  selectSuggestion(key: string): void {
+    this.onSelectProperty(key);
+    this.close();
+  }
+}
+
+type ListKind = "folders" | "files" | "properties";
+
 export class FrontmatterPlusSettingTab extends PluginSettingTab {
   plugin: FrontmatterPlusPlugin;
 
@@ -359,6 +400,13 @@ export class FrontmatterPlusSettingTab extends PluginSettingTab {
       this.tr("folderPlaceholder"),
       this.tr("exclusionsNote")
     );
+    this.renderPathList(
+      exclusions,
+      "properties",
+      this.tr("ignoredProperties"),
+      this.tr("ignoredPropertiesDesc"),
+      this.tr("propertyPlaceholder")
+    );
 
     const badge = this.createSection(containerEl, "badgeTitle");
 
@@ -552,17 +600,35 @@ export class FrontmatterPlusSettingTab extends PluginSettingTab {
             ...DEFAULT_SETTINGS,
             excludedFolders: [],
             excludedFiles: [],
+            ignoredProperties: [],
             folderTemplates: [],
           };
           await this.plugin.saveSettings();
+          this.plugin.refreshContentBaselines();
           this.redraw();
         });
       });
   }
 
+  private getList(kind: ListKind): string[] {
+    const s = this.plugin.settings;
+    if (kind === "folders") return s.excludedFolders;
+    if (kind === "files") return s.excludedFiles;
+    return s.ignoredProperties;
+  }
+
+  private async setList(kind: ListKind, items: string[]): Promise<void> {
+    const s = this.plugin.settings;
+    if (kind === "folders") s.excludedFolders = items;
+    else if (kind === "files") s.excludedFiles = items;
+    else s.ignoredProperties = items;
+    await this.plugin.saveSettings();
+    if (kind === "properties") this.plugin.refreshContentBaselines();
+  }
+
   private renderPathList(
     group: HTMLElement,
-    kind: "folders" | "files",
+    kind: ListKind,
     name: string,
     desc: string,
     placeholder: string,
@@ -571,10 +637,7 @@ export class FrontmatterPlusSettingTab extends PluginSettingTab {
     const setting = new Setting(group).setName(name).setDesc(desc);
     if (noticeBody) this.addNotice(setting.descEl, noticeBody);
 
-    const items =
-      kind === "folders"
-        ? this.plugin.settings.excludedFolders
-        : this.plugin.settings.excludedFiles;
+    const items = this.getList(kind);
 
     if (items.length > 0) {
       setting.settingEl.addClass("fp-list-heading");
@@ -582,33 +645,40 @@ export class FrontmatterPlusSettingTab extends PluginSettingTab {
 
     setting.addText((text) => {
       text.setPlaceholder(placeholder);
-      const addPath = async (path: string): Promise<void> => {
-        if (kind === "folders") {
-          if (this.plugin.settings.excludedFolders.includes(path)) {
-            text.setValue("");
-            return;
-          }
-          this.plugin.settings.excludedFolders.push(path);
-        } else {
-          if (this.plugin.settings.excludedFiles.includes(path)) {
-            text.setValue("");
-            return;
-          }
-          this.plugin.settings.excludedFiles.push(path);
-        }
+      const addItem = async (value: string): Promise<void> => {
+        const item = kind === "properties" ? value.trim() : value;
+        const current = this.getList(kind);
+        const exists =
+          kind === "properties"
+            ? current.some((key) => key.trim().toLowerCase() === item.toLowerCase())
+            : current.includes(item);
         text.setValue("");
+        if ((kind === "properties" && !item) || exists) return;
         text.inputEl.blur();
-        await this.plugin.saveSettings();
+        await this.setList(kind, [...current, item]);
         this.redraw();
       };
       if (kind === "folders") {
         new FolderSuggest(this.app, text.inputEl, (folder) => {
-          void addPath(folder.path);
+          void addItem(folder.path);
+        });
+      } else if (kind === "files") {
+        new FileSuggest(this.app, text.inputEl, (file) => {
+          void addItem(file.path);
         });
       } else {
-        new FileSuggest(this.app, text.inputEl, (file) => {
-          void addPath(file.path);
-        });
+        new PropertySuggest(
+          this.app,
+          text.inputEl,
+          () => [
+            ...this.getList("properties"),
+            this.plugin.settings.createdKey,
+            this.plugin.settings.updatedKey,
+          ],
+          (key) => {
+            void addItem(key);
+          }
+        );
       }
     });
 
@@ -639,14 +709,11 @@ export class FrontmatterPlusSettingTab extends PluginSettingTab {
           e.preventDefault();
           const from = Number(e.dataTransfer?.getData("text/plain"));
           if (Number.isNaN(from) || from === i) return;
-          const arr =
-            kind === "folders"
-              ? this.plugin.settings.excludedFolders
-              : this.plugin.settings.excludedFiles;
+          const arr = [...this.getList(kind)];
           const [moved] = arr.splice(from, 1);
           arr.splice(i, 0, moved);
           void (async () => {
-            await this.plugin.saveSettings();
+            await this.setList(kind, arr);
             this.redraw();
           })();
         });
@@ -666,16 +733,10 @@ export class FrontmatterPlusSettingTab extends PluginSettingTab {
       setIcon(remove, "x");
       remove.addEventListener("click", () => {
         void (async () => {
-          if (kind === "folders") {
-            this.plugin.settings.excludedFolders = this.plugin.settings.excludedFolders.filter(
-              (f) => f !== item
-            );
-          } else {
-            this.plugin.settings.excludedFiles = this.plugin.settings.excludedFiles.filter(
-              (f) => f !== item
-            );
-          }
-          await this.plugin.saveSettings();
+          await this.setList(
+            kind,
+            this.getList(kind).filter((existing) => existing !== item)
+          );
           this.redraw();
         })();
       });
