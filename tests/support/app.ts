@@ -1,4 +1,4 @@
-import { parseYaml, stringifyYaml, TAbstractFile, TFile, TFolder } from "obsidian";
+import { MarkdownView, parseYaml, stringifyYaml, TAbstractFile, TFile, TFolder } from "obsidian";
 
 export interface FileOptions {
   ctime?: number;
@@ -94,6 +94,31 @@ export class FakeVault {
     );
   }
 
+  rename(entry: TAbstractFile, newPath: string): string {
+    const oldPath = entry.path;
+    const moved = Array.from(this.entries.keys()).filter(
+      (path) => path === oldPath || path.startsWith(`${oldPath}/`)
+    );
+    if (entry.parent) entry.parent.children = entry.parent.children.filter((child) => child !== entry);
+    entry.parent = this.ensureFolder(newPath.includes("/") ? newPath.slice(0, newPath.lastIndexOf("/")) : "");
+    entry.parent.children.push(entry);
+    for (const path of moved) {
+      const item = this.entries.get(path) as TAbstractFile;
+      const next = newPath + path.slice(oldPath.length);
+      this.entries.delete(path);
+      item.path = next;
+      item.name = next.slice(next.lastIndexOf("/") + 1);
+      if (item instanceof TFile) item.basename = item.extension ? item.name.slice(0, -(item.extension.length + 1)) : item.name;
+      this.entries.set(next, item);
+      const content = this.contents.get(path);
+      if (content !== undefined) {
+        this.contents.delete(path);
+        this.contents.set(next, content);
+      }
+    }
+    return oldPath;
+  }
+
   getAllLoadedFiles(): TAbstractFile[] {
     return Array.from(this.entries.values());
   }
@@ -175,18 +200,46 @@ export class FakeFileManager {
 
 export class FakeWorkspace {
   activeFile: TFile | null = null;
+  leaves: { view: MarkdownView }[] = [];
+  activeView: MarkdownView | null = null;
+  private handlers = new Map<string, (() => void)[]>();
+
+  open(file: TFile): MarkdownView {
+    const view = new MarkdownView(file);
+    this.leaves.push({ view });
+    return view;
+  }
+
+  activate(view: MarkdownView | null): void {
+    this.activeView = view;
+    this.activeFile = view?.file ?? null;
+    this.trigger("active-leaf-change");
+  }
+
+  close(view: MarkdownView): void {
+    this.leaves = this.leaves.filter((leaf) => leaf.view !== view);
+    if (this.activeView === view) this.activate(null);
+    this.trigger("layout-change");
+  }
+
+  trigger(name: string): void {
+    for (const handler of this.handlers.get(name) ?? []) handler();
+  }
 
   getActiveFile(): TFile | null {
     return this.activeFile;
   }
 
-  getActiveViewOfType(): null {
-    return null;
+  getActiveViewOfType<T>(type: new (...args: never[]) => T): T | null {
+    return this.activeView instanceof type ? this.activeView : null;
   }
 
-  iterateAllLeaves(): void {}
+  iterateAllLeaves(callback: (leaf: { view: MarkdownView }) => void): void {
+    for (const leaf of this.leaves) callback(leaf);
+  }
 
-  on(): object {
+  on(name: string, handler: () => void): object {
+    this.handlers.set(name, [...(this.handlers.get(name) ?? []), handler]);
     return {};
   }
 

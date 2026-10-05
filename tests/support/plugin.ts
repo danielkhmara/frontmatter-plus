@@ -5,6 +5,7 @@ import { DEFAULT_SETTINGS, FrontmatterPlusSettings } from "../../src/settings";
 import { TemplateRouter } from "../../src/template-router";
 import type { TFile } from "obsidian";
 import { FakeApp } from "./app";
+import { FakeElement } from "./elements";
 
 export interface TestPlugin {
   app: FakeApp;
@@ -14,6 +15,8 @@ export interface TestPlugin {
   badge: PropertiesBadge;
   focusDisplay: string | null;
   openFiles: TFile[];
+  statusBarItems: FakeElement[];
+  saveCount: number;
   saveSettings(): Promise<void>;
 }
 
@@ -35,7 +38,16 @@ export function createPlugin(overrides: Partial<FrontmatterPlusSettings> = {}): 
     focusSession: { getDisplay: () => plugin.focusDisplay },
     focusDisplay: null as string | null,
     openFiles: [] as TFile[],
+    statusBarItems: [] as FakeElement[],
+    saveCount: 0,
+    registerEvent: () => undefined,
+    addStatusBarItem: () => {
+      const item = new FakeElement();
+      plugin.statusBarItems.push(item);
+      return item;
+    },
     saveSettings: async () => {
+      plugin.saveCount += 1;
       if (!plugin.service.forgetContentIfStale()) return;
       for (const file of plugin.openFiles) await plugin.service.rememberContent(file);
     },

@@ -25,8 +25,10 @@ export class App {}
 export class Plugin {}
 
 export class MarkdownView {
-  file: TFile | null = null;
+  constructor(public file: TFile | null = null) {}
 }
+
+export const Platform = { isDesktopApp: true, isMobile: false };
 
 export class WorkspaceLeaf {
   view: unknown = null;
