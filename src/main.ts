@@ -1,4 +1,4 @@
-import { Plugin, TFile } from "obsidian";
+import { MarkdownView, Plugin, TFile } from "obsidian";
 import { FocusSessionTracker } from "./focus-session";
 import { FrontmatterService } from "./frontmatter-service";
 import { PathSync } from "./path-sync";
@@ -67,6 +67,37 @@ export default class FrontmatterPlusPlugin extends Plugin {
         })();
       })
     );
+
+    this.registerEvent(
+      this.app.workspace.on("editor-change", (_editor, info) => {
+        if (info.file) this.service.markUserEdit(info.file.path);
+      })
+    );
+
+    const markPropertiesEdit = (event: Event): void => {
+      const target = event.target;
+      if (!(target instanceof Element) || !target.closest(".metadata-container")) return;
+      const file = this.app.workspace.getActiveFile();
+      if (file) this.service.markUserEdit(file.path);
+    };
+    this.registerDomEvent(document, "input", markPropertiesEdit, true);
+    this.registerDomEvent(document, "change", markPropertiesEdit, true);
+    this.registerDomEvent(document, "click", markPropertiesEdit, true);
+    this.registerDomEvent(document, "keydown", markPropertiesEdit, true);
+
+    this.registerEvent(
+      this.app.workspace.on("file-open", (file) => {
+        if (file) void this.service.rememberContent(file);
+      })
+    );
+
+    this.app.workspace.onLayoutReady(() => {
+      this.app.workspace.iterateAllLeaves((leaf) => {
+        if (leaf.view instanceof MarkdownView && leaf.view.file) {
+          void this.service.rememberContent(leaf.view.file);
+        }
+      });
+    });
 
     this.registerEvent(
       this.app.vault.on("modify", (file) => {

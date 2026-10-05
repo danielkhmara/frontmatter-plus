@@ -43,7 +43,8 @@ function contentFingerprint(
       meta.push(`${key}=${stableValue(recordGet(fm, key))}`);
     }
   }
-  return hashString(`${body}\n--\n${meta.join("\n")}`);
+  const text = body.replace(/\r\n/g, "\n").replace(/\s+$/, "");
+  return hashString(`${text}\n--\n${meta.join("\n")}`);
 }
 
 function frontmatterKeyCount(fm: Record<string, unknown> | null): number {
@@ -53,6 +54,8 @@ function frontmatterKeyCount(fm: Record<string, unknown> | null): number {
 
 type ApplyMode = "create" | "modify";
 
+const USER_EDIT_WINDOW_MS = 10000;
+
 export class FrontmatterService {
   private plugin: FrontmatterPlusPlugin;
   private createTimers = new Map<string, number>();
@@ -60,6 +63,7 @@ export class FrontmatterService {
   private processing = new Set<string>();
   private lastContentHash = new Map<string, string>();
   private lastWriteAt = new Map<string, number>();
+  private userEditAt = new Map<string, number>();
 
   constructor(plugin: FrontmatterPlusPlugin) {
     this.plugin = plugin;
@@ -81,6 +85,7 @@ export class FrontmatterService {
     this.processing.clear();
     this.lastContentHash.clear();
     this.lastWriteAt.clear();
+    this.userEditAt.clear();
   }
 
   onUnloadFile(path: string): void {
@@ -89,6 +94,7 @@ export class FrontmatterService {
     this.processing.delete(path);
     this.lastContentHash.delete(path);
     this.lastWriteAt.delete(path);
+    this.userEditAt.delete(path);
   }
 
   renameHash(oldPath: string, newPath: string): void {
@@ -102,6 +108,31 @@ export class FrontmatterService {
       this.lastWriteAt.set(newPath, wrote);
       this.lastWriteAt.delete(oldPath);
     }
+    const edited = this.userEditAt.get(oldPath);
+    if (edited !== undefined) {
+      this.userEditAt.set(newPath, edited);
+      this.userEditAt.delete(oldPath);
+    }
+  }
+
+  markUserEdit(path: string): void {
+    this.userEditAt.set(path, Date.now());
+  }
+
+  async rememberContent(file: TFile): Promise<void> {
+    if (file.extension !== "md" || this.lastContentHash.has(file.path)) return;
+    const content = await this.app.vault.cachedRead(file);
+    if (this.lastContentHash.has(file.path)) return;
+    this.lastContentHash.set(file.path, this.fingerprint(content));
+  }
+
+  private fingerprint(content: string): string {
+    return contentFingerprint(
+      this.stripFrontmatter(content),
+      this.parseFrontmatter(content),
+      this.settings.createdKey,
+      this.settings.updatedKey
+    );
   }
 
   isExcluded(file: TFile): boolean {
@@ -197,8 +228,13 @@ export class FrontmatterService {
   scheduleUpdate(file: TFile): void {
     if (this.isExcluded(file) || file.extension !== "md") return;
     if (this.isSelfWrite(file)) return;
+    const modifiedAt = this.userEditAt.get(file.path);
+    if (modifiedAt === undefined || Date.now() - modifiedAt > USER_EDIT_WINDOW_MS) {
+      this.lastContentHash.delete(file.path);
+      void this.rememberContent(file);
+      return;
+    }
     this.cancelUpdateTimer(file.path);
-    const modifiedAt = Date.now();
     const delay = Math.max(0, this.settings.updateDelayMs);
     const timer = window.setTimeout(() => {
       this.updateTimers.delete(file.path);
@@ -228,13 +264,12 @@ export class FrontmatterService {
     if (this.plugin.pathSync?.isSuppressed(file.path)) return;
 
     const content = await this.app.vault.read(file);
-    const body = this.stripFrontmatter(content);
     const fm = this.parseFrontmatter(content);
     const keyCount = frontmatterKeyCount(fm);
 
     const createdKey = this.settings.createdKey;
     const updatedKey = this.settings.updatedKey;
-    const hash = contentFingerprint(body, fm, createdKey, updatedKey);
+    const hash = this.fingerprint(content);
     const prevHash = this.lastContentHash.get(file.path);
     const contentChanged = prevHash === undefined || prevHash !== hash;
 
