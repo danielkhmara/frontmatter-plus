@@ -60,13 +60,13 @@ export class PathSync {
 
     const folders = remapList(s.excludedFolders, oldPath, newPath);
     if (folders.changed) {
-      s.excludedFolders = Array.from(new Set(folders.next)).sort();
+      s.excludedFolders = Array.from(new Set(folders.next));
       changed = true;
     }
 
     const files = remapList(s.excludedFiles, oldPath, newPath);
     if (files.changed) {
-      s.excludedFiles = Array.from(new Set(files.next)).sort();
+      s.excludedFiles = Array.from(new Set(files.next));
       changed = true;
     }
 
