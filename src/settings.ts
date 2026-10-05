@@ -91,8 +91,28 @@ function asString(value: unknown, fallback: string): string {
   return typeof value === "string" ? value : fallback;
 }
 
-function asNumber(value: unknown, fallback: number): number {
-  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+const NUMBER_MINIMUMS = {
+  createDelayMs: 0,
+  updateDelayMs: 0,
+  badgeScrollSpeed: 0,
+  staleAfterDays: 1,
+  wordsPerMinute: 60,
+} as const;
+
+type NumberSetting = keyof typeof NUMBER_MINIMUMS;
+
+export function parseNumberSetting(key: NumberSetting, value: string): number {
+  const text = value.trim();
+  const n = Number(text);
+  return text !== "" && Number.isFinite(n) && n >= NUMBER_MINIMUMS[key]
+    ? Math.round(n)
+    : DEFAULT_SETTINGS[key];
+}
+
+function asNumber(value: unknown, key: NumberSetting): number {
+  return typeof value === "number" && Number.isFinite(value) && value >= NUMBER_MINIMUMS[key]
+    ? value
+    : DEFAULT_SETTINGS[key];
 }
 
 function asBoolean(value: unknown, fallback: boolean): boolean {
@@ -126,8 +146,8 @@ export function normalizeSettings(raw: unknown): FrontmatterPlusSettings {
     createdKey: asString(data.createdKey, d.createdKey),
     updatedKey: asString(data.updatedKey, d.updatedKey),
     dateFormat: asString(data.dateFormat, d.dateFormat),
-    createDelayMs: asNumber(data.createDelayMs, d.createDelayMs),
-    updateDelayMs: asNumber(data.updateDelayMs, d.updateDelayMs),
+    createDelayMs: asNumber(data.createDelayMs, "createDelayMs"),
+    updateDelayMs: asNumber(data.updateDelayMs, "updateDelayMs"),
     autoInsertCreatedOnCreate: asBoolean(data.autoInsertCreatedOnCreate, d.autoInsertCreatedOnCreate),
     autoInsertUpdatedOnCreate: asBoolean(data.autoInsertUpdatedOnCreate, d.autoInsertUpdatedOnCreate),
     forceInsertCreated: asBoolean(data.forceInsertCreated, d.forceInsertCreated),
@@ -137,17 +157,17 @@ export function normalizeSettings(raw: unknown): FrontmatterPlusSettings {
     excludedFiles: asStringArray(data.excludedFiles),
     ignoredProperties: asStringArray(data.ignoredProperties),
     showPropertiesBadge: asBoolean(data.showPropertiesBadge, d.showPropertiesBadge),
-    badgeScrollSpeed: asNumber(data.badgeScrollSpeed, d.badgeScrollSpeed),
+    badgeScrollSpeed: asNumber(data.badgeScrollSpeed, "badgeScrollSpeed"),
     showReadingTime: asBoolean(data.showReadingTime, d.showReadingTime),
     showYamlCompleteness: asBoolean(data.showYamlCompleteness, d.showYamlCompleteness),
     showFileSize: asBoolean(data.showFileSize, d.showFileSize),
     showStaleWarning: asBoolean(data.showStaleWarning, d.showStaleWarning),
-    staleAfterDays: asNumber(data.staleAfterDays, d.staleAfterDays),
+    staleAfterDays: asNumber(data.staleAfterDays, "staleAfterDays"),
     showFocusTimer: asBoolean(data.showFocusTimer, d.showFocusTimer),
     showTasks: asBoolean(data.showTasks, d.showTasks),
     showBacklinks: asBoolean(data.showBacklinks, d.showBacklinks),
     showIsolated: asBoolean(data.showIsolated, d.showIsolated),
-    wordsPerMinute: asNumber(data.wordsPerMinute, d.wordsPerMinute),
+    wordsPerMinute: asNumber(data.wordsPerMinute, "wordsPerMinute"),
     folderTemplates: pruneIncompleteRules(asFolderRules(data.folderTemplates)),
     showStatusBarClock: asBoolean(data.showStatusBarClock, d.showStatusBarClock),
     statusBarDateFormat: asString(data.statusBarDateFormat, d.statusBarDateFormat),

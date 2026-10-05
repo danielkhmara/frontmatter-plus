@@ -5,6 +5,7 @@ import {
   isPluginLocale,
   isRuleComplete,
   normalizeSettings,
+  parseNumberSetting,
   pruneIncompleteRules,
   type FrontmatterPlusSettings,
 } from "../src/settings";
@@ -152,5 +153,44 @@ describe("normalizeSettings", () => {
     const current = normalizeSettings({ autoInsertDatesOnCreate: true, autoInsertCreatedOnCreate: false });
     assert.equal(current.autoInsertCreatedOnCreate, false);
     assert.equal(current.autoInsertUpdatedOnCreate, DEFAULT_SETTINGS.autoInsertUpdatedOnCreate);
+  });
+});
+
+describe("parseNumberSetting", () => {
+  it("accepts whole numbers within the limits", () => {
+    assert.equal(parseNumberSetting("createDelayMs", "3000"), 3000);
+    assert.equal(parseNumberSetting("updateDelayMs", " 0 "), 0);
+    assert.equal(parseNumberSetting("wordsPerMinute", "250"), 250);
+  });
+
+  it("rounds fractional values", () => {
+    assert.equal(parseNumberSetting("staleAfterDays", "7.6"), 8);
+  });
+
+  it("restores the default for empty, invalid and too small values", () => {
+    assert.equal(parseNumberSetting("createDelayMs", ""), DEFAULT_SETTINGS.createDelayMs);
+    assert.equal(parseNumberSetting("updateDelayMs", "   "), DEFAULT_SETTINGS.updateDelayMs);
+    assert.equal(parseNumberSetting("badgeScrollSpeed", "fast"), DEFAULT_SETTINGS.badgeScrollSpeed);
+    assert.equal(parseNumberSetting("createDelayMs", "-1"), DEFAULT_SETTINGS.createDelayMs);
+    assert.equal(parseNumberSetting("wordsPerMinute", "59"), DEFAULT_SETTINGS.wordsPerMinute);
+    assert.equal(parseNumberSetting("staleAfterDays", "0"), DEFAULT_SETTINGS.staleAfterDays);
+  });
+});
+
+describe("number limits in saved settings", () => {
+  it("replace values below the minimum with the defaults", () => {
+    const result = normalizeSettings({ createDelayMs: -5, wordsPerMinute: 10, staleAfterDays: 0, badgeScrollSpeed: -1 });
+    assert.equal(result.createDelayMs, DEFAULT_SETTINGS.createDelayMs);
+    assert.equal(result.wordsPerMinute, DEFAULT_SETTINGS.wordsPerMinute);
+    assert.equal(result.staleAfterDays, DEFAULT_SETTINGS.staleAfterDays);
+    assert.equal(result.badgeScrollSpeed, DEFAULT_SETTINGS.badgeScrollSpeed);
+  });
+
+  it("keep values at the minimum", () => {
+    const result = normalizeSettings({ updateDelayMs: 0, wordsPerMinute: 60, staleAfterDays: 1, badgeScrollSpeed: 0 });
+    assert.equal(result.updateDelayMs, 0);
+    assert.equal(result.wordsPerMinute, 60);
+    assert.equal(result.staleAfterDays, 1);
+    assert.equal(result.badgeScrollSpeed, 0);
   });
 });

@@ -10,7 +10,14 @@ import {
 } from "obsidian";
 import { t, tf } from "./i18n";
 import type FrontmatterPlusPlugin from "./main";
-import { isPluginLocale, isRuleComplete, normalizeSettings, pruneIncompleteRules } from "./settings";
+import {
+  DEFAULT_SETTINGS,
+  isPluginLocale,
+  isRuleComplete,
+  normalizeSettings,
+  parseNumberSetting,
+  pruneIncompleteRules,
+} from "./settings";
 import { formatNow, toMomentLocale } from "./time";
 
 class FolderSuggest extends AbstractInputSuggest<TFolder> {
@@ -233,7 +240,7 @@ export class FrontmatterPlusSettingTab extends PluginSettingTab {
         .setPlaceholder("MMM D, YYYY")
         .setValue(this.plugin.settings.statusBarDateFormat)
         .onChange(async (value) => {
-          this.plugin.settings.statusBarDateFormat = value.trim() || "YYYY-MM-DD";
+          this.plugin.settings.statusBarDateFormat = value.trim() || DEFAULT_SETTINGS.statusBarDateFormat;
           this.setMomentFormatDesc(statusDate, this.plugin.settings.statusBarDateFormat, this.clockLocale);
           await this.plugin.saveSettings();
         })
@@ -246,7 +253,7 @@ export class FrontmatterPlusSettingTab extends PluginSettingTab {
         .setPlaceholder("h:mm A")
         .setValue(this.plugin.settings.statusBarTimeFormat)
         .onChange(async (value) => {
-          this.plugin.settings.statusBarTimeFormat = value.trim() || "HH:mm";
+          this.plugin.settings.statusBarTimeFormat = value.trim() || DEFAULT_SETTINGS.statusBarTimeFormat;
           this.setMomentFormatDesc(statusTime, this.plugin.settings.statusBarTimeFormat, this.clockLocale);
           await this.plugin.saveSettings();
         })
@@ -262,7 +269,7 @@ export class FrontmatterPlusSettingTab extends PluginSettingTab {
           .setPlaceholder("created")
           .setValue(this.plugin.settings.createdKey)
           .onChange(async (value) => {
-            this.plugin.settings.createdKey = value.trim() || "created";
+            this.plugin.settings.createdKey = value.trim() || DEFAULT_SETTINGS.createdKey;
             await this.plugin.saveSettings();
           })
       );
@@ -275,7 +282,7 @@ export class FrontmatterPlusSettingTab extends PluginSettingTab {
           .setPlaceholder("updated")
           .setValue(this.plugin.settings.updatedKey)
           .onChange(async (value) => {
-            this.plugin.settings.updatedKey = value.trim() || "updated";
+            this.plugin.settings.updatedKey = value.trim() || DEFAULT_SETTINGS.updatedKey;
             await this.plugin.saveSettings();
           })
       );
@@ -288,8 +295,7 @@ export class FrontmatterPlusSettingTab extends PluginSettingTab {
           .setPlaceholder("5000")
           .setValue(String(this.plugin.settings.createDelayMs))
           .onChange(async (value) => {
-            const n = Number(value);
-            this.plugin.settings.createDelayMs = Number.isFinite(n) && n >= 0 ? n : 5000;
+            this.plugin.settings.createDelayMs = parseNumberSetting("createDelayMs", value);
             await this.plugin.saveSettings();
           })
       );
@@ -302,8 +308,7 @@ export class FrontmatterPlusSettingTab extends PluginSettingTab {
           .setPlaceholder("15000")
           .setValue(String(this.plugin.settings.updateDelayMs))
           .onChange(async (value) => {
-            const n = Number(value);
-            this.plugin.settings.updateDelayMs = Number.isFinite(n) && n >= 0 ? n : 15000;
+            this.plugin.settings.updateDelayMs = parseNumberSetting("updateDelayMs", value);
             await this.plugin.saveSettings();
           })
       );
@@ -315,7 +320,7 @@ export class FrontmatterPlusSettingTab extends PluginSettingTab {
         .setPlaceholder("YYYY-MM-DD[T]HH:mm:[00]")
         .setValue(this.plugin.settings.dateFormat)
         .onChange(async (value) => {
-          this.plugin.settings.dateFormat = value.trim() || "YYYY-MM-DD[T]HH:mm:[00]";
+          this.plugin.settings.dateFormat = value.trim() || DEFAULT_SETTINGS.dateFormat;
           this.setMomentFormatDesc(dateFormat, this.plugin.settings.dateFormat);
           await this.plugin.saveSettings();
         })
@@ -423,9 +428,7 @@ export class FrontmatterPlusSettingTab extends PluginSettingTab {
           .setPlaceholder("30")
           .setValue(String(this.plugin.settings.badgeScrollSpeed))
           .onChange(async (value) => {
-            const n = Number(value);
-            this.plugin.settings.badgeScrollSpeed =
-              Number.isFinite(n) && n >= 0 ? Math.round(n) : 30;
+            this.plugin.settings.badgeScrollSpeed = parseNumberSetting("badgeScrollSpeed", value);
             await this.plugin.saveSettings();
           })
       );
@@ -448,9 +451,7 @@ export class FrontmatterPlusSettingTab extends PluginSettingTab {
           .setPlaceholder("200")
           .setValue(String(this.plugin.settings.wordsPerMinute))
           .onChange(async (value) => {
-            const n = Number(value);
-            this.plugin.settings.wordsPerMinute =
-              Number.isFinite(n) && n >= 60 ? Math.round(n) : 200;
+            this.plugin.settings.wordsPerMinute = parseNumberSetting("wordsPerMinute", value);
             await this.plugin.saveSettings();
           })
       );
@@ -503,9 +504,7 @@ export class FrontmatterPlusSettingTab extends PluginSettingTab {
           .setPlaceholder("30")
           .setValue(String(this.plugin.settings.staleAfterDays))
           .onChange(async (value) => {
-            const n = Number(value);
-            this.plugin.settings.staleAfterDays =
-              Number.isFinite(n) && n >= 1 ? Math.round(n) : 30;
+            this.plugin.settings.staleAfterDays = parseNumberSetting("staleAfterDays", value);
             await this.plugin.saveSettings();
           })
       );
