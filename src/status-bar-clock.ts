@@ -1,6 +1,6 @@
 import { Platform } from "obsidian";
 import type FrontmatterPlusPlugin from "./main";
-import { formatNow } from "./time";
+import { formatNow, toMomentLocale } from "./time";
 
 export class StatusBarClock {
   private plugin: FrontmatterPlusPlugin;
@@ -44,8 +44,9 @@ export class StatusBarClock {
     }
 
     this.el.show();
-    const date = formatNow(s.statusBarDateFormat);
-    const time = formatNow(s.statusBarTimeFormat);
+    const locale = toMomentLocale(s.locale);
+    const date = formatNow(s.statusBarDateFormat, locale);
+    const time = formatNow(s.statusBarTimeFormat, locale);
     this.el.setText(`${date}  ${time}`);
   }
 }

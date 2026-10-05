@@ -16,7 +16,7 @@ import {
   isRuleComplete,
   pruneIncompleteRules,
 } from "./settings";
-import { formatNow } from "./time";
+import { formatNow, toMomentLocale } from "./time";
 
 class FolderSuggest extends AbstractInputSuggest<TFolder> {
   constructor(
@@ -135,9 +135,13 @@ export class FrontmatterPlusSettingTab extends PluginSettingTab {
     notice.createSpan({ cls: "fp-notice-body", text: ` ${body}` });
   }
 
-  private setMomentFormatDesc(setting: Setting, format: string): void {
+  private get clockLocale(): string {
+    return toMomentLocale(this.plugin.settings.locale);
+  }
+
+  private setMomentFormatDesc(setting: Setting, format: string, locale?: string): void {
     const preview = tf(this.plugin.settings.locale, "statusBarFormatPreview", {
-      preview: formatNow(format),
+      preview: formatNow(format, locale),
     });
     setting.setDesc(`${this.tr("statusBarMomentDesc")} ${preview}`);
   }
@@ -187,27 +191,27 @@ export class FrontmatterPlusSettingTab extends PluginSettingTab {
     this.addNotice(statusShow.descEl, this.tr("desktopOnlyBody"));
 
     const statusDate = new Setting(status).setName(this.tr("statusBarDateFormat"));
-    this.setMomentFormatDesc(statusDate, this.plugin.settings.statusBarDateFormat);
+    this.setMomentFormatDesc(statusDate, this.plugin.settings.statusBarDateFormat, this.clockLocale);
     statusDate.addText((text) =>
       text
         .setPlaceholder("MMM D, YYYY")
         .setValue(this.plugin.settings.statusBarDateFormat)
         .onChange(async (value) => {
           this.plugin.settings.statusBarDateFormat = value.trim() || "YYYY-MM-DD";
-          this.setMomentFormatDesc(statusDate, this.plugin.settings.statusBarDateFormat);
+          this.setMomentFormatDesc(statusDate, this.plugin.settings.statusBarDateFormat, this.clockLocale);
           await this.plugin.saveSettings();
         })
     );
 
     const statusTime = new Setting(status).setName(this.tr("statusBarTimeFormat"));
-    this.setMomentFormatDesc(statusTime, this.plugin.settings.statusBarTimeFormat);
+    this.setMomentFormatDesc(statusTime, this.plugin.settings.statusBarTimeFormat, this.clockLocale);
     statusTime.addText((text) =>
       text
         .setPlaceholder("h:mm A")
         .setValue(this.plugin.settings.statusBarTimeFormat)
         .onChange(async (value) => {
           this.plugin.settings.statusBarTimeFormat = value.trim() || "HH:mm";
-          this.setMomentFormatDesc(statusTime, this.plugin.settings.statusBarTimeFormat);
+          this.setMomentFormatDesc(statusTime, this.plugin.settings.statusBarTimeFormat, this.clockLocale);
           await this.plugin.saveSettings();
         })
     );

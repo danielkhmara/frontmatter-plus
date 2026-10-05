@@ -1,12 +1,18 @@
+import type { PluginLocale } from "./settings";
+
 interface MomentInstance {
   format(format: string): string;
+  locale(locale: string): MomentInstance;
   diff(other: MomentInstance, unit: "days"): number;
 }
 
 type MomentFactory = {
   (): MomentInstance;
   (input: number): MomentInstance;
+  locales(): string[];
 };
+
+const DATA_LOCALE = "en";
 
 function getMomentFactory(): MomentFactory {
   const candidate: unknown = (window as Window & { moment?: unknown }).moment;
@@ -21,14 +27,22 @@ function pad2(value: number): string {
   return n < 10 ? `0${n}` : String(n);
 }
 
-export function formatNow(format: string): string {
-  const instant: MomentInstance = getMomentFactory()();
-  return instant.format(format);
+function withLocale(moment: MomentFactory, instant: MomentInstance, locale: string): MomentInstance {
+  return instant.locale(moment.locales().includes(locale) ? locale : DATA_LOCALE);
 }
 
-export function formatTimestamp(ms: number, format: string): string {
-  const instant: MomentInstance = getMomentFactory()(ms);
-  return instant.format(format);
+export function toMomentLocale(locale: PluginLocale): string {
+  return locale === "zh" ? "zh-cn" : locale;
+}
+
+export function formatNow(format: string, locale: string = DATA_LOCALE): string {
+  const moment = getMomentFactory();
+  return withLocale(moment, moment(), locale).format(format);
+}
+
+export function formatTimestamp(ms: number, format: string, locale: string = DATA_LOCALE): string {
+  const moment = getMomentFactory();
+  return withLocale(moment, moment(ms), locale).format(format);
 }
 
 export function formatDuration(ms: number): string {
