@@ -27,11 +27,12 @@ export default class FrontmatterPlusPlugin extends Plugin {
     this.statusBarClock = new StatusBarClock(this);
 
     this.propertiesBadge.onload();
-    this.focusSession.onload(() => this.propertiesBadge.refreshNow());
+    this.focusSession.onload(() => this.propertiesBadge.onFocusTick());
     this.statusBarClock.onload();
     this.addSettingTab(new FrontmatterPlusSettingTab(this.app, this));
 
     this.app.workspace.onLayoutReady(() => {
+      this.rememberOpenFiles();
       this.registerEvent(
         this.app.vault.on("create", (file) => {
           if (!(file instanceof TFile) || file.extension !== "md") return;
@@ -68,8 +69,6 @@ export default class FrontmatterPlusPlugin extends Plugin {
         if (file) void this.service.rememberContent(file);
       })
     );
-
-    this.app.workspace.onLayoutReady(() => this.rememberOpenFiles());
 
     this.registerEvent(
       this.app.vault.on("modify", (file) => {

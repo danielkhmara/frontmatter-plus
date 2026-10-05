@@ -133,3 +133,52 @@ describe("isolated notes in the file summary", () => {
     );
   });
 });
+
+describe("file summary statistics", () => {
+  type Badge = { buildLabel(file: unknown): Promise<string>; forgetFile(path: string): void; onFocusTick(): void; refreshNow(): void };
+
+  it("are reused while the note does not change", async (t) => {
+    const plugin = createPlugin({ ...ALL_OFF, showReadingTime: true });
+    const file = plugin.app.vault.add("Notes/Plan.md", "one two three");
+    const reads = t.mock.method(plugin.app.vault, "cachedRead");
+    const badge = plugin.badge as unknown as Badge;
+    await badge.buildLabel(file);
+    await badge.buildLabel(file);
+    assert.equal(reads.mock.callCount(), 1);
+  });
+
+  it("are recalculated after the note changes", async (t) => {
+    const clock = useClock(t, localTime(2026, 10, 5, 12));
+    const plugin = createPlugin({ ...ALL_OFF, showTasks: true });
+    const file = plugin.app.vault.add("Notes/Plan.md", "- [ ] One\n");
+    const badge = plugin.badge as unknown as Badge;
+    assert.equal(await badge.buildLabel(file), tf("en", "indicatorTasks", { done: 0, total: 1 }));
+    clock.advance(1000);
+    await plugin.app.vault.modify(file, "- [x] One\n");
+    assert.equal(await badge.buildLabel(file), tf("en", "indicatorTasks", { done: 1, total: 1 }));
+  });
+
+  it("are recalculated after the properties of the note are reindexed", async (t) => {
+    const plugin = createPlugin({ ...ALL_OFF, showYamlCompleteness: true });
+    const file = plugin.app.vault.add("Notes/Plan.md", "---\nstatus: draft\nowner:\n---\n");
+    const badge = plugin.badge as unknown as Badge;
+    assert.equal(await badge.buildLabel(file), tf("en", "indicatorYaml", { n: 50 }));
+    const reads = t.mock.method(plugin.app.vault, "cachedRead");
+    badge.forgetFile(file.path);
+    await badge.buildLabel(file);
+    assert.equal(reads.mock.callCount(), 1);
+  });
+
+  it("refresh every second only when the editing time is shown", (t) => {
+    const plugin = createPlugin({ showPropertiesBadge: true, showFocusTimer: true });
+    const badge = plugin.badge as unknown as Badge;
+    const refreshes = t.mock.method(badge, "refreshNow", () => undefined);
+    badge.onFocusTick();
+    plugin.settings.showFocusTimer = false;
+    badge.onFocusTick();
+    plugin.settings.showFocusTimer = true;
+    plugin.settings.showPropertiesBadge = false;
+    badge.onFocusTick();
+    assert.equal(refreshes.mock.callCount(), 1);
+  });
+});

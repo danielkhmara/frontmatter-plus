@@ -2,7 +2,7 @@ import { CachedMetadata, MarkdownView, TFile } from "obsidian";
 import { t, tf } from "./i18n";
 import type FrontmatterPlusPlugin from "./main";
 import { daysSince } from "./time";
-import { asRecord, recordGet } from "./utils";
+import { asRecord, recordGet, stripFrontmatter } from "./utils";
 
 const BADGE_CLS = "fp-properties-badge";
 const TRACK_CLS = "fp-properties-badge-track";
@@ -10,6 +10,15 @@ const TEXT_CLS = "fp-properties-badge-text";
 const SCROLLING_CLS = "is-scrolling";
 const HEADING_SEL = ".metadata-properties-heading";
 const TASK_RE = /^\s*[-*+]\s+\[([ xX])\]/gm;
+
+interface NoteStats {
+  mtime: number;
+  size: number;
+  words: number;
+  tasks: { done: number; total: number } | null;
+  yamlError: boolean;
+  completeness: number;
+}
 
 function isEmptyValue(value: unknown): boolean {
   if (value === undefined || value === null) return true;
@@ -22,13 +31,6 @@ function countWords(text: string): number {
   const trimmed = text.trim();
   if (!trimmed) return 0;
   return trimmed.split(/\s+/).filter(Boolean).length;
-}
-
-function stripFrontmatter(content: string): string {
-  if (!content.startsWith("---")) return content;
-  const end = content.indexOf("\n---", 3);
-  if (end === -1) return content;
-  return content.slice(end + 4).replace(/^\r?\n/, "");
 }
 
 function formatBytes(plugin: FrontmatterPlusPlugin, bytes: number): string {
@@ -76,6 +78,13 @@ function hasYamlError(cache: CachedMetadata | null, content: string): boolean {
   return trimmed.startsWith("---") && !hasFrontmatter && !hasPosition;
 }
 
+function yamlCompleteness(cache: CachedMetadata | null): number {
+  const fm = asRecord(cache?.frontmatter);
+  const keys = fm ? Object.keys(fm).filter((k) => k !== "position") : [];
+  if (!fm || keys.length === 0) return 0;
+  return Math.round((keys.filter((k) => !isEmptyValue(recordGet(fm, k))).length / keys.length) * 100);
+}
+
 function touchesProperties(node: Node): boolean {
   return (
     node instanceof Element &&
@@ -109,6 +118,7 @@ export class PropertiesBadge {
   private observer: MutationObserver | null = null;
   private resizeObserver: ResizeObserver | null = null;
   private refreshTimer: number | null = null;
+  private stats = new Map<string, NoteStats>();
 
   constructor(plugin: FrontmatterPlusPlugin) {
     this.plugin = plugin;
@@ -134,6 +144,7 @@ export class PropertiesBadge {
     );
     this.plugin.registerEvent(
       this.plugin.app.metadataCache.on("changed", (file) => {
+        this.forgetFile(file.path);
         const active = this.getActiveFile();
         if (active && active.path === file.path) this.scheduleRefresh();
       })
@@ -166,6 +177,15 @@ export class PropertiesBadge {
 
   refreshNow(): void {
     this.scheduleRefresh(0);
+  }
+
+  onFocusTick(): void {
+    const s = this.plugin.settings;
+    if (s.showPropertiesBadge && s.showFocusTimer) this.refreshNow();
+  }
+
+  forgetFile(path: string): void {
+    this.stats.delete(path);
   }
 
   private scheduleRefresh(delay = 60): void {
@@ -205,8 +225,10 @@ export class PropertiesBadge {
     }
 
     const speed = String(this.plugin.settings.badgeScrollSpeed);
+    const shown = new Set<string>();
     for (const heading of Array.from(headings)) {
       const file = this.fileForHeading(heading);
+      if (file) shown.add(file.path);
       const label = file ? await this.buildLabel(file) : "";
       let badge = heading.querySelector<HTMLElement>(`.${BADGE_CLS}`);
       if (!label) {
@@ -222,6 +244,10 @@ export class PropertiesBadge {
       badge.dataset.label = label;
       badge.dataset.speed = speed;
       this.updateScrolling(badge);
+    }
+
+    for (const path of Array.from(this.stats.keys())) {
+      if (!shown.has(path)) this.stats.delete(path);
     }
   }
 
@@ -259,35 +285,43 @@ export class PropertiesBadge {
     badge.style.setProperty("--fp-badge-scroll-duration", `${text.offsetWidth / speed}s`);
   }
 
+  private async noteStats(file: TFile): Promise<NoteStats> {
+    const cached = this.stats.get(file.path);
+    if (cached && cached.mtime === file.stat.mtime && cached.size === file.stat.size) return cached;
+
+    const content = await this.plugin.app.vault.cachedRead(file);
+    const body = stripFrontmatter(content);
+    const cache = this.plugin.app.metadataCache.getFileCache(file);
+    const stats: NoteStats = {
+      mtime: file.stat.mtime,
+      size: file.stat.size,
+      words: countWords(body),
+      tasks: countTasks(body),
+      yamlError: hasYamlError(cache, content),
+      completeness: yamlCompleteness(cache),
+    };
+    this.stats.set(file.path, stats);
+    return stats;
+  }
+
   private async buildLabel(file: TFile): Promise<string> {
     const parts: string[] = [];
     const s = this.plugin.settings;
     const locale = s.locale;
-    const content = await this.plugin.app.vault.cachedRead(file);
-    const body = stripFrontmatter(content);
-    const cache = this.plugin.app.metadataCache.getFileCache(file);
+    const stats = await this.noteStats(file);
 
-    if (hasYamlError(cache, content)) {
+    if (stats.yamlError) {
       parts.push(`${this.tr("noticeLabel")} ${this.tr("indicatorYamlError")}`);
     }
 
     if (s.showReadingTime) {
-      const words = countWords(body);
       const wpm = Math.max(60, s.wordsPerMinute || 200);
-      const minutes = words === 0 ? 0 : Math.max(1, Math.ceil(words / wpm));
+      const minutes = stats.words === 0 ? 0 : Math.max(1, Math.ceil(stats.words / wpm));
       parts.push(tf(locale, "indicatorMinRead", { n: minutes }));
     }
 
     if (s.showYamlCompleteness) {
-      const fm = asRecord(cache?.frontmatter);
-      const keys = fm ? Object.keys(fm).filter((k) => k !== "position") : [];
-      const pct =
-        !fm || keys.length === 0
-          ? 0
-          : Math.round(
-              (keys.filter((k) => !isEmptyValue(recordGet(fm, k))).length / keys.length) * 100
-            );
-      parts.push(tf(locale, "indicatorYaml", { n: pct }));
+      parts.push(tf(locale, "indicatorYaml", { n: stats.completeness }));
     }
 
     if (s.showFileSize) {
@@ -306,11 +340,8 @@ export class PropertiesBadge {
       }
     }
 
-    if (s.showTasks) {
-      const tasks = countTasks(body);
-      if (tasks) {
-        parts.push(tf(locale, "indicatorTasks", { done: tasks.done, total: tasks.total }));
-      }
+    if (s.showTasks && stats.tasks) {
+      parts.push(tf(locale, "indicatorTasks", { done: stats.tasks.done, total: stats.tasks.total }));
     }
 
     const backlinks = s.showBacklinks || s.showIsolated ? countBacklinks(this.plugin, file) : 0;
