@@ -73,9 +73,11 @@ export class FrontmatterService {
   private lastContentHash = new Map<string, string>();
   private lastWriteAt = new Map<string, number>();
   private userEditAt = new Map<string, number>();
+  private baselineSignature: string;
 
   constructor(plugin: FrontmatterPlusPlugin) {
     this.plugin = plugin;
+    this.baselineSignature = this.currentSignature();
   }
 
   get settings(): FrontmatterPlusSettings {
@@ -139,16 +141,30 @@ export class FrontmatterService {
     this.lastContentHash.clear();
   }
 
+  forgetContentIfStale(): boolean {
+    const signature = this.currentSignature();
+    if (signature === this.baselineSignature) return false;
+    this.baselineSignature = signature;
+    this.forgetContent();
+    return true;
+  }
+
+  private ignoredKeys(): Set<string> {
+    return new Set(this.settings.ignoredProperties.map((key) => key.trim().toLowerCase()));
+  }
+
+  private currentSignature(): string {
+    const { createdKey, updatedKey } = this.settings;
+    return JSON.stringify([createdKey, updatedKey, Array.from(this.ignoredKeys()).sort()]);
+  }
+
   private fingerprint(content: string): string {
-    const ignored = Array.isArray(this.settings.ignoredProperties)
-      ? this.settings.ignoredProperties
-      : [];
     return contentFingerprint(
       this.stripFrontmatter(content),
       this.parseFrontmatter(content),
       this.settings.createdKey,
       this.settings.updatedKey,
-      new Set(ignored.filter((key) => typeof key === "string").map((key) => key.trim().toLowerCase()))
+      this.ignoredKeys()
     );
   }
 
@@ -486,7 +502,6 @@ export class FrontmatterService {
 
     this.plugin.settings = normalizeSettings(data);
     await this.plugin.saveSettings();
-    this.plugin.refreshContentBaselines();
     return true;
   }
 }

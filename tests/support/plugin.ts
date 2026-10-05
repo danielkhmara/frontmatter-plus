@@ -3,6 +3,7 @@ import type FrontmatterPlusPlugin from "../../src/main";
 import { PropertiesBadge } from "../../src/properties-badge";
 import { DEFAULT_SETTINGS, FrontmatterPlusSettings } from "../../src/settings";
 import { TemplateRouter } from "../../src/template-router";
+import type { TFile } from "obsidian";
 import { FakeApp } from "./app";
 
 export interface TestPlugin {
@@ -12,6 +13,8 @@ export interface TestPlugin {
   templateRouter: TemplateRouter;
   badge: PropertiesBadge;
   focusDisplay: string | null;
+  openFiles: TFile[];
+  saveSettings(): Promise<void>;
 }
 
 export function createPlugin(overrides: Partial<FrontmatterPlusSettings> = {}): TestPlugin {
@@ -31,8 +34,11 @@ export function createPlugin(overrides: Partial<FrontmatterPlusSettings> = {}): 
     pathSync: { isSuppressed: () => false },
     focusSession: { getDisplay: () => plugin.focusDisplay },
     focusDisplay: null as string | null,
-    saveSettings: async () => undefined,
-    refreshContentBaselines: () => undefined,
+    openFiles: [] as TFile[],
+    saveSettings: async () => {
+      if (!plugin.service.forgetContentIfStale()) return;
+      for (const file of plugin.openFiles) await plugin.service.rememberContent(file);
+    },
   } as unknown as TestPlugin & Record<string, unknown>;
 
   const host = plugin as unknown as FrontmatterPlusPlugin;

@@ -593,7 +593,6 @@ export class FrontmatterPlusSettingTab extends PluginSettingTab {
         btn.onClick(async () => {
           this.plugin.settings = normalizeSettings({});
           await this.plugin.saveSettings();
-          this.plugin.refreshContentBaselines();
           this.redraw();
         });
       });
@@ -612,7 +611,6 @@ export class FrontmatterPlusSettingTab extends PluginSettingTab {
     else if (kind === "files") s.excludedFiles = items;
     else s.ignoredProperties = items;
     await this.plugin.saveSettings();
-    if (kind === "properties") this.plugin.refreshContentBaselines();
   }
 
   private renderPathList(

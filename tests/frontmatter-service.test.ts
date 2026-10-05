@@ -290,19 +290,64 @@ describe("ignored properties", () => {
     });
   }
 
-  it("apply to open notes once their content is remembered again", async (t) => {
+  it("apply to open notes as soon as the list is saved", async (t) => {
     useClock(t, T0);
     const plugin = createPlugin();
     const file = plugin.app.vault.add("Projects/Website redesign.md", BASE);
+    plugin.openFiles = [file];
     await plugin.service.rememberContent(file);
     plugin.settings.ignoredProperties = ["favorite"];
-    plugin.service.forgetContent();
-    await plugin.service.rememberContent(file);
+    await plugin.saveSettings();
     plugin.service.markUserEdit(file.path);
     await plugin.app.vault.modify(file, BASE.replace("favorite: false", "favorite: true"));
     plugin.service.scheduleUpdate(file);
     await settle();
     assert.equal(property(plugin.app.vault, file, "updated"), "2025-05-05T10:00:00");
+  });
+});
+
+describe("remembered content", () => {
+  const CONTENT = note("created: 2024-01-01T10:00:00\nupdated: 2025-05-05T10:00:00\nmodified: 2025-06-06T10:00:00");
+
+  async function openedNote(t: TestContext) {
+    useClock(t, T0);
+    const plugin = createPlugin();
+    const file = plugin.app.vault.add("Projects/Plan.md", CONTENT);
+    plugin.openFiles = [file];
+    await plugin.service.rememberContent(file);
+    return { plugin, file };
+  }
+
+  it("is refreshed after renaming the date properties, so nothing is updated by mistake", async (t) => {
+    const { plugin, file } = await openedNote(t);
+    plugin.settings.updatedKey = "modified";
+    await plugin.saveSettings();
+    plugin.service.markUserEdit(file.path);
+    await plugin.app.vault.modify(file, CONTENT);
+    plugin.service.scheduleUpdate(file);
+    await settle();
+    assert.equal(property(plugin.app.vault, file, "modified"), "2025-06-06T10:00:00");
+    assert.equal(plugin.app.vault.writes(file.path), 1);
+  });
+
+  it("is refreshed after changing the ignored properties", async (t) => {
+    const { plugin } = await openedNote(t);
+    plugin.settings.ignoredProperties = ["favorite"];
+    assert.equal(plugin.service.forgetContentIfStale(), true);
+  });
+
+  it("is kept when settings unrelated to comparison change", async (t) => {
+    const { plugin } = await openedNote(t);
+    plugin.settings.showTasks = true;
+    plugin.settings.updateDelayMs = 1000;
+    assert.equal(plugin.service.forgetContentIfStale(), false);
+  });
+
+  it("is kept when ignored properties differ only in case, spacing or order", async (t) => {
+    useClock(t, T0);
+    const plugin = createPlugin({ ignoredProperties: ["favorite", "pinned"] });
+    plugin.settings.ignoredProperties = [" Pinned ", "FAVORITE"];
+    assert.equal(plugin.service.forgetContentIfStale(), false);
   });
 });
 

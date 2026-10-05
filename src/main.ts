@@ -111,17 +111,13 @@ export default class FrontmatterPlusPlugin extends Plugin {
     });
   }
 
-  refreshContentBaselines(): void {
-    this.service.forgetContent();
-    this.rememberOpenFiles();
-  }
-
   async loadSettings(): Promise<void> {
     this.settings = normalizeSettings(await this.loadData());
   }
 
   async saveSettings(): Promise<void> {
     await this.saveData(this.settings);
+    if (this.service?.forgetContentIfStale()) this.rememberOpenFiles();
     this.propertiesBadge?.refreshNow();
     this.statusBarClock?.refresh();
   }
