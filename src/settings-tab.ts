@@ -530,6 +530,18 @@ export class FrontmatterPlusSettingTab extends PluginSettingTab {
         });
       });
     new Setting(resetItems)
+      .setName(this.tr("trailingLinesName"))
+      .setDesc(this.tr("trailingLinesDesc"))
+      .addButton((btn) => {
+        btn.setButtonText(this.tr("trailingLinesButton"));
+        btn.onClick(async () => {
+          btn.setDisabled(true);
+          const count = await this.plugin.service.removeTrailingBlankLines();
+          btn.setDisabled(false);
+          new Notice(tf(this.plugin.settings.locale, "trailingLinesResult", { count }));
+        });
+      });
+    new Setting(resetItems)
       .setName(this.tr("resetName"))
       .setDesc(this.tr("resetDesc"))
       .addButton((btn) => {

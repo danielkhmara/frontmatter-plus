@@ -55,6 +55,14 @@ function frontmatterKeyCount(fm: Record<string, unknown> | null): number {
 type ApplyMode = "create" | "modify";
 
 const USER_EDIT_WINDOW_MS = 10000;
+const TRAILING_BLANK_LINES = /(?:\r?\n[ \t]*)+$/;
+
+function withoutTrailingBlankLines(content: string): string {
+  const cleaned = content.replace(TRAILING_BLANK_LINES, "");
+  const frontmatterEnd = cleaned.startsWith("---") ? cleaned.indexOf("\n---", 3) : -1;
+  if (frontmatterEnd === -1 || frontmatterEnd + 4 !== cleaned.length) return cleaned;
+  return cleaned + (content.includes("\r\n") ? "\r\n" : "\n");
+}
 
 export class FrontmatterService {
   private plugin: FrontmatterPlusPlugin;
@@ -191,6 +199,20 @@ export class FrontmatterService {
       } finally {
         window.setTimeout(() => this.processing.delete(file.path), 1000);
       }
+    }
+
+    return changed;
+  }
+
+  async removeTrailingBlankLines(): Promise<number> {
+    let changed = 0;
+
+    for (const file of this.app.vault.getMarkdownFiles()) {
+      if (this.isExcluded(file)) continue;
+      const content = await this.app.vault.cachedRead(file);
+      if (withoutTrailingBlankLines(content) === content) continue;
+      await this.app.vault.process(file, withoutTrailingBlankLines);
+      changed++;
     }
 
     return changed;
