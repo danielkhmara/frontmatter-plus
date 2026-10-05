@@ -2,7 +2,7 @@ import { CachedMetadata, MarkdownView, TFile } from "obsidian";
 import { t, tf } from "./i18n";
 import type FrontmatterPlusPlugin from "./main";
 import { daysSince } from "./time";
-import { asRecord, isRecord, recordGet } from "./utils";
+import { asRecord, recordGet } from "./utils";
 
 const BADGE_CLS = "fp-properties-badge";
 const TRACK_CLS = "fp-properties-badge-track";
@@ -76,24 +76,6 @@ function hasYamlError(cache: CachedMetadata | null, content: string): boolean {
   return trimmed.startsWith("---") && !hasFrontmatter && !hasPosition;
 }
 
-function readLinkMap(value: unknown): Record<string, Record<string, number>> {
-  if (!isRecord(value)) return {};
-  const out: Record<string, Record<string, number>> = {};
-  for (const from of Object.keys(value)) {
-    const targets = recordGet(value, from);
-    if (!isRecord(targets)) continue;
-    const inner: Record<string, number> = {};
-    for (const to of Object.keys(targets)) {
-      const count = recordGet(targets, to);
-      if (typeof count === "number" && count > 0) {
-        inner[to] = count;
-      }
-    }
-    out[from] = inner;
-  }
-  return out;
-}
-
 function touchesProperties(node: Node): boolean {
   return (
     node instanceof Element &&
@@ -117,26 +99,9 @@ function countBacklinks(plugin: FrontmatterPlusPlugin, file: TFile): number {
   return count;
 }
 
-function isLinkIsolated(plugin: FrontmatterPlusPlugin, file: TFile): boolean {
-  const resolvedRaw: unknown = plugin.app.metadataCache.resolvedLinks;
-  const resolved = readLinkMap(resolvedRaw);
-  const outgoing = resolved[file.path];
-  if (outgoing) {
-    const counts: number[] = Object.keys(outgoing).map((key) => outgoing[key]);
-    for (const count of counts) {
-      if (count > 0) return false;
-    }
-  }
-
-  const sources: string[] = Object.keys(resolved);
-  for (const from of sources) {
-    if (from === file.path) continue;
-    const targets = resolved[from];
-    const inbound = targets[file.path];
-    if (typeof inbound === "number" && inbound > 0) return false;
-  }
-
-  return true;
+function hasOutgoingLinks(plugin: FrontmatterPlusPlugin, file: TFile): boolean {
+  const outgoing: Record<string, number> = plugin.app.metadataCache.resolvedLinks[file.path] ?? {};
+  return Object.keys(outgoing).some((target) => outgoing[target] > 0);
 }
 
 export class PropertiesBadge {
@@ -348,11 +313,12 @@ export class PropertiesBadge {
       }
     }
 
+    const backlinks = s.showBacklinks || s.showIsolated ? countBacklinks(this.plugin, file) : 0;
     if (s.showBacklinks) {
-      parts.push(tf(locale, "indicatorBacklinks", { n: countBacklinks(this.plugin, file) }));
+      parts.push(tf(locale, "indicatorBacklinks", { n: backlinks }));
     }
 
-    if (s.showIsolated && isLinkIsolated(this.plugin, file)) {
+    if (s.showIsolated && backlinks === 0 && !hasOutgoingLinks(this.plugin, file)) {
       parts.push(this.tr("indicatorIsolated"));
     }
 
