@@ -3,6 +3,7 @@ node_modules/
 
 # Build / editor
 *.js.map
+.test-build/
 .DS_Store
 Thumbs.db
 *.log

@@ -710,7 +710,7 @@ const ru: Dict = {
   sizeGB: "{n} ГБ",
 };
 
-const TABLES: Record<PluginLocale, Dict> = { en, de, zh, fr, ru };
+export const TABLES: Record<PluginLocale, Dict> = { en, de, zh, fr, ru };
 
 export function t(locale: PluginLocale, key: string): string {
   return TABLES[locale]?.[key] ?? TABLES.en[key] ?? key;
