@@ -10,6 +10,10 @@ export function recordGet(record: Record<string, unknown>, key: string): unknown
   return record[key];
 }
 
+export function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 export function recordSet(record: Record<string, unknown>, key: string, value: unknown): void {
   record[key] = value;
 }

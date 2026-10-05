@@ -62,7 +62,7 @@ export default class FrontmatterPlusPlugin extends Plugin {
         if (this.pathSync.isSuppressed(file.path)) return;
         const createdAt = Date.now();
         void (async () => {
-          await this.templateRouter.maybeApply(file);
+          await this.templateRouter.maybeApply(file, createdAt);
           this.service.scheduleCreate(file, createdAt);
         })();
       })

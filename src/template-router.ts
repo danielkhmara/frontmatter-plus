@@ -1,6 +1,7 @@
 import { TFile } from "obsidian";
 import type FrontmatterPlusPlugin from "./main";
-import { formatNow } from "./time";
+import { formatNow, formatTimestamp } from "./time";
+import { escapeRegExp } from "./utils";
 
 export class TemplateRouter {
   private plugin: FrontmatterPlusPlugin;
@@ -14,7 +15,7 @@ export class TemplateRouter {
     return this.applying.has(file.path);
   }
 
-  async maybeApply(file: TFile): Promise<boolean> {
+  async maybeApply(file: TFile, createdAt: number): Promise<boolean> {
     if (file.extension !== "md") return false;
 
     const rule = this.findRule(file);
@@ -30,6 +31,9 @@ export class TemplateRouter {
     try {
       let content = await this.plugin.app.vault.read(templateFile);
       content = this.expandPlaceholders(content, file);
+      if (this.plugin.settings.fillEmptyDateKeys && !this.plugin.service.isExcluded(file)) {
+        content = this.fillEmptyDates(content, createdAt);
+      }
       await this.plugin.app.vault.modify(file, content);
       return true;
     } finally {
@@ -53,6 +57,26 @@ export class TemplateRouter {
     }
 
     return best;
+  }
+
+  private fillEmptyDates(content: string, createdAt: number): string {
+    if (!content.startsWith("---")) return content;
+    const end = content.indexOf("\n---", 3);
+    if (end === -1) return content;
+
+    const { createdKey, updatedKey, dateFormat } = this.plugin.settings;
+    const stamp = formatTimestamp(createdAt, dateFormat);
+    const value =
+      /^[\w.+\-\/:]+(?: [\w.+\-\/:]+)*$/.test(stamp) && !stamp.includes(": ")
+        ? stamp
+        : JSON.stringify(stamp);
+    const keys = [createdKey, updatedKey].filter(Boolean).map(escapeRegExp).join("|");
+    const emptyKey = new RegExp(`^(${keys}):[ \\t]*(?:""|''|null|~)?[ \\t]*$`, "gm");
+
+    const frontmatter = content
+      .slice(0, end)
+      .replace(emptyKey, (_, key: string) => `${key}: ${value}`);
+    return frontmatter + content.slice(end);
   }
 
   private expandPlaceholders(content: string, file: TFile): string {

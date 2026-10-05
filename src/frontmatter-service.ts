@@ -1,4 +1,4 @@
-import { App, TFile } from "obsidian";
+import { App, parseYaml, TFile } from "obsidian";
 import type FrontmatterPlusPlugin from "./main";
 import { DEFAULT_SETTINGS } from "./settings";
 import type { FrontmatterPlusSettings } from "./settings";
@@ -165,6 +165,17 @@ export class FrontmatterService {
     return changed;
   }
 
+  private parseFrontmatter(content: string): Record<string, unknown> | null {
+    if (!content.startsWith("---")) return null;
+    const end = content.indexOf("\n---", 3);
+    if (end === -1) return null;
+    try {
+      return asRecord(parseYaml(content.slice(content.indexOf("\n") + 1, end))) ?? {};
+    } catch {
+      return null;
+    }
+  }
+
   stripFrontmatter(content: string): string {
     if (!content.startsWith("---")) return content;
     const end = content.indexOf("\n---", 3);
@@ -218,8 +229,7 @@ export class FrontmatterService {
 
     const content = await this.app.vault.read(file);
     const body = this.stripFrontmatter(content);
-    const cache = this.app.metadataCache.getFileCache(file);
-    const fm = asRecord(cache?.frontmatter);
+    const fm = this.parseFrontmatter(content);
     const keyCount = frontmatterKeyCount(fm);
 
     const createdKey = this.settings.createdKey;
@@ -273,6 +283,7 @@ export class FrontmatterService {
 
     const wrote = await this.write(
       file,
+      fm ?? {},
       {
         insertCreated,
         insertUpdated,
@@ -289,6 +300,7 @@ export class FrontmatterService {
 
   private async write(
     file: TFile,
+    current: Record<string, unknown>,
     opts: {
       insertCreated: boolean;
       insertUpdated: boolean;
@@ -303,8 +315,6 @@ export class FrontmatterService {
     const createdKey = this.settings.createdKey;
     const updatedKey = this.settings.updatedKey;
     const timestamp = formatTimestamp(eventAt, this.settings.dateFormat);
-    const cache = this.app.metadataCache.getFileCache(file);
-    const current = asRecord(cache?.frontmatter) ?? {};
 
     const hasCreated = Object.prototype.hasOwnProperty.call(current, createdKey);
     const hasUpdated = Object.prototype.hasOwnProperty.call(current, updatedKey);
