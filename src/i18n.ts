@@ -55,6 +55,9 @@ const en: Dict = {
   showBadge: "Show file summary",
   showBadgeDesc:
     "Shows a metrics line at the top of the file properties. Key note details stay in one row without opening Obsidian side panels.",
+  badgeScrollSpeed: "Scrolling speed",
+  badgeScrollSpeedDesc:
+    "Sets how fast the summary scrolls when it does not fit in the available width, in pixels per second. Set to 0 to turn scrolling off and truncate the overflowing part with an ellipsis.",
   staleWarning: "Stale file label",
   staleWarningDesc:
     "Shows a Stale label when you have not edited the file for a long time. Highlights neglected notes that may need a review or update.",
@@ -184,6 +187,9 @@ const de: Dict = {
   showBadge: "Dateizusammenfassung anzeigen",
   showBadgeDesc:
     "Zeigt eine Kennzahlenzeile oben bei den Dateieigenschaften. Wichtige Notizdaten bleiben in einer Zeile, ohne Seitenbereiche in Obsidian zu öffnen.",
+  badgeScrollSpeed: "Laufgeschwindigkeit",
+  badgeScrollSpeedDesc:
+    "Legt fest, wie schnell die Zusammenfassung durchläuft, wenn sie nicht in die verfügbare Breite passt, in Pixeln pro Sekunde. Bei 0 ist das Durchlaufen deaktiviert und der überstehende Teil wird mit Auslassungspunkten gekürzt.",
   staleWarning: "Kennzeichnung veralteter Dateien",
   staleWarningDesc:
     "Zeigt „Veraltet“, wenn Sie die Datei lange nicht bearbeitet haben. Weist auf vernachlässigte Notizen hin, die geprüft oder aktualisiert werden sollten.",
@@ -308,6 +314,9 @@ const zh: Dict = {
   showBadge: "显示文件摘要",
   showBadgeDesc:
     "在文件属性顶部显示指标行。重要笔记信息集中在一行显示，无需打开 Obsidian 侧边面板。",
+  badgeScrollSpeed: "滚动速度",
+  badgeScrollSpeedDesc:
+    "当摘要超出可用宽度时，设置其滚动速度，单位为像素/秒。设为 0 时关闭滚动，超出的部分以省略号截断。",
   staleWarning: "过期文件标记",
   staleWarningDesc:
     "若您长时间未编辑文件，则显示「过期」标记。用于提示可能需要检查或更新的闲置笔记。",
@@ -433,6 +442,9 @@ const fr: Dict = {
   showBadge: "Afficher le résumé du fichier",
   showBadgeDesc:
     "Affiche une ligne de métriques en haut des propriétés du fichier. Les infos clés restent sur une seule ligne, sans ouvrir les panneaux latéraux d’Obsidian.",
+  badgeScrollSpeed: "Vitesse de défilement",
+  badgeScrollSpeedDesc:
+    "Définit la vitesse de défilement du résumé lorsqu’il ne tient pas dans la largeur disponible, en pixels par seconde. À 0, le défilement est désactivé et la partie qui dépasse est tronquée par des points de suspension.",
   staleWarning: "Marquage des fichiers obsolètes",
   staleWarningDesc:
     "Affiche le marquage «\u00a0Obsolète\u00a0» si vous n’avez pas modifié le fichier depuis longtemps. Signale les notes délaissées qui méritent une vérification ou une mise à jour.",
@@ -563,6 +575,9 @@ const ru: Dict = {
   showBadge: "Показывать сводку о файле",
   showBadgeDesc:
     "Выводит текстовую строку с метриками в верхней части свойств файла. Отображает важные параметры заметки в один ряд без открытия боковых вкладок Obsidian.",
+  badgeScrollSpeed: "Скорость бегущей строки",
+  badgeScrollSpeedDesc:
+    "Задает скорость прокрутки сводки в пикселях в секунду, если она не помещается по ширине. При значении 0 прокрутка отключается, а не поместившаяся часть скрывается многоточием.",
   staleWarning: "Пометка устаревших файлов",
   staleWarningDesc:
     "Выводит метку «Устарел», если файл давно вами не редактировался. Сигнализирует о заброшенных записях, требующих проверки или актуализации данных.",

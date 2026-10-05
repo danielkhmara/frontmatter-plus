@@ -26,6 +26,7 @@ export interface FrontmatterPlusSettings {
   excludedFolders: string[];
   excludedFiles: string[];
   showPropertiesBadge: boolean;
+  badgeScrollSpeed: number;
   showReadingTime: boolean;
   showYamlCompleteness: boolean;
   showFileSize: boolean;
@@ -56,6 +57,7 @@ export const DEFAULT_SETTINGS: FrontmatterPlusSettings = {
   excludedFolders: [],
   excludedFiles: [],
   showPropertiesBadge: true,
+  badgeScrollSpeed: 30,
   showReadingTime: true,
   showYamlCompleteness: false,
   showFileSize: true,

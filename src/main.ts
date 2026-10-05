@@ -142,6 +142,10 @@ export default class FrontmatterPlusPlugin extends Plugin {
         typeof data.showPropertiesBadge === "boolean"
           ? data.showPropertiesBadge
           : DEFAULT_SETTINGS.showPropertiesBadge,
+      badgeScrollSpeed:
+        typeof data.badgeScrollSpeed === "number"
+          ? data.badgeScrollSpeed
+          : DEFAULT_SETTINGS.badgeScrollSpeed,
       showReadingTime:
         typeof data.showReadingTime === "boolean"
           ? data.showReadingTime

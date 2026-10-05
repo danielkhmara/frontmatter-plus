@@ -373,6 +373,21 @@ export class FrontmatterPlusSettingTab extends PluginSettingTab {
       );
 
     new Setting(badge)
+      .setName(this.tr("badgeScrollSpeed"))
+      .setDesc(this.tr("badgeScrollSpeedDesc"))
+      .addText((text) =>
+        text
+          .setPlaceholder("30")
+          .setValue(String(this.plugin.settings.badgeScrollSpeed))
+          .onChange(async (value) => {
+            const n = Number(value);
+            this.plugin.settings.badgeScrollSpeed =
+              Number.isFinite(n) && n >= 0 ? Math.round(n) : 30;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(badge)
       .setName(this.tr("readingTime"))
       .setDesc(this.tr("readingTimeDesc"))
       .addToggle((toggle) =>

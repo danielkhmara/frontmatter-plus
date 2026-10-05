@@ -5,6 +5,9 @@ import { daysSince } from "./time";
 import { asRecord, isRecord, recordGet } from "./utils";
 
 const BADGE_CLS = "fp-properties-badge";
+const TRACK_CLS = "fp-properties-badge-track";
+const TEXT_CLS = "fp-properties-badge-text";
+const SCROLLING_CLS = "is-scrolling";
 const HEADING_SEL = ".metadata-properties-heading";
 const TASK_RE = /^\s*[-*+]\s+\[([ xX])\]/gm;
 
@@ -116,6 +119,7 @@ function isLinkIsolated(plugin: FrontmatterPlusPlugin, file: TFile): boolean {
 export class PropertiesBadge {
   private plugin: FrontmatterPlusPlugin;
   private observer: MutationObserver | null = null;
+  private resizeObserver: ResizeObserver | null = null;
   private refreshTimer: number | null = null;
 
   constructor(plugin: FrontmatterPlusPlugin) {
@@ -125,6 +129,9 @@ export class PropertiesBadge {
   onload(): void {
     this.observer = new MutationObserver(() => this.scheduleRefresh());
     this.observer.observe(document.body, { childList: true, subtree: true });
+    this.resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) this.updateScrolling(entry.target as HTMLElement);
+    });
 
     this.plugin.registerEvent(
       this.plugin.app.workspace.on("active-leaf-change", () => this.scheduleRefresh())
@@ -158,6 +165,8 @@ export class PropertiesBadge {
   onunload(): void {
     this.observer?.disconnect();
     this.observer = null;
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = null;
     if (this.refreshTimer !== null) {
       window.clearTimeout(this.refreshTimer);
       this.refreshTimer = null;
@@ -201,21 +210,63 @@ export class PropertiesBadge {
     const headings = document.querySelectorAll<HTMLElement>(HEADING_SEL);
 
     if (!this.plugin.settings.showPropertiesBadge) {
-      document.querySelectorAll(`.${BADGE_CLS}`).forEach((el) => el.remove());
+      document.querySelectorAll<HTMLElement>(`.${BADGE_CLS}`).forEach((el) => this.removeBadge(el));
       return;
     }
 
+    const speed = String(this.plugin.settings.badgeScrollSpeed);
     for (const heading of Array.from(headings)) {
       const file = this.fileForHeading(heading);
       const label = file ? await this.buildLabel(file) : "";
       let badge = heading.querySelector<HTMLElement>(`.${BADGE_CLS}`);
       if (!label) {
-        badge?.remove();
+        if (badge) this.removeBadge(badge);
         continue;
       }
-      if (!badge) badge = heading.createDiv({ cls: BADGE_CLS });
-      badge.setText(label);
+      if (!badge) {
+        badge = heading.createDiv({ cls: BADGE_CLS });
+        badge.createSpan({ cls: TRACK_CLS });
+        this.resizeObserver?.observe(badge);
+      }
+      if (badge.dataset.label === label && badge.dataset.speed === speed) continue;
+      badge.dataset.label = label;
+      badge.dataset.speed = speed;
+      this.updateScrolling(badge);
     }
+  }
+
+  private removeBadge(badge: HTMLElement): void {
+    this.resizeObserver?.unobserve(badge);
+    badge.remove();
+  }
+
+  private updateScrolling(badge: HTMLElement): void {
+    const track = badge.querySelector<HTMLElement>(`.${TRACK_CLS}`);
+    const label = badge.dataset.label;
+    if (!track || !label) return;
+
+    const speed = this.plugin.settings.badgeScrollSpeed;
+    const canScroll = speed > 0 && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    if (canScroll && badge.hasClass(SCROLLING_CLS)) {
+      const copies = Array.from(track.querySelectorAll<HTMLElement>(`.${TEXT_CLS}`));
+      copies.forEach((copy) => copy.setText(label));
+      const [first] = copies;
+      const gap = parseFloat(getComputedStyle(first).paddingRight) || 0;
+      if (first.offsetWidth - gap > badge.clientWidth) {
+        badge.style.setProperty("--fp-badge-scroll-duration", `${first.offsetWidth / speed}s`);
+        return;
+      }
+    }
+
+    badge.removeClass(SCROLLING_CLS);
+    track.empty();
+    const text = track.createSpan({ cls: TEXT_CLS, text: label });
+    if (!canScroll || text.scrollWidth <= text.clientWidth) return;
+
+    badge.addClass(SCROLLING_CLS);
+    track.createSpan({ cls: TEXT_CLS, text: label, attr: { "aria-hidden": "true" } });
+    badge.style.setProperty("--fp-badge-scroll-duration", `${text.offsetWidth / speed}s`);
   }
 
   private async buildLabel(file: TFile): Promise<string> {

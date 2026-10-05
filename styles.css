@@ -172,10 +172,18 @@
   display: flex;
   align-items: center;
   gap: 0.5em;
+  min-width: 0;
 }
 
 .fp-properties-badge {
+  --fp-badge-scroll-gap: 3em;
+  --fp-badge-fade: 1.5em;
+  display: flex;
+  justify-content: flex-end;
+  flex: 1 1 auto;
+  min-width: 0;
   margin-left: auto;
+  overflow: hidden;
   color: var(--text-muted);
   font-size: var(--font-ui-smaller);
   font-weight: var(--font-normal);
@@ -184,4 +192,60 @@
   pointer-events: none;
   user-select: none;
   white-space: nowrap;
+}
+
+.fp-properties-badge-track {
+  display: flex;
+  min-width: 0;
+}
+
+.fp-properties-badge-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fp-properties-badge.is-scrolling {
+  justify-content: flex-start;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 var(--fp-badge-fade),
+    #000 calc(100% - var(--fp-badge-fade)),
+    transparent
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 var(--fp-badge-fade),
+    #000 calc(100% - var(--fp-badge-fade)),
+    transparent
+  );
+}
+
+.fp-properties-badge.is-scrolling .fp-properties-badge-track {
+  flex: none;
+  animation: fp-badge-scroll var(--fp-badge-scroll-duration, 10s) linear infinite;
+  will-change: transform;
+}
+
+.fp-properties-badge.is-scrolling .fp-properties-badge-text {
+  flex: none;
+  overflow: visible;
+  padding-right: var(--fp-badge-scroll-gap);
+}
+
+@keyframes fp-badge-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fp-properties-badge.is-scrolling .fp-properties-badge-track {
+    animation: none;
+  }
 }
