@@ -94,6 +94,20 @@ function readLinkMap(value: unknown): Record<string, Record<string, number>> {
   return out;
 }
 
+function touchesProperties(node: Node): boolean {
+  return (
+    node instanceof Element &&
+    (node.matches(HEADING_SEL) || node.matches(`.${BADGE_CLS}`) || node.querySelector(HEADING_SEL) !== null)
+  );
+}
+
+function affectsProperties(mutation: MutationRecord): boolean {
+  return (
+    Array.from(mutation.addedNodes).some(touchesProperties) ||
+    Array.from(mutation.removedNodes).some(touchesProperties)
+  );
+}
+
 function countBacklinks(plugin: FrontmatterPlusPlugin, file: TFile): number {
   const resolved: Record<string, Record<string, number>> = plugin.app.metadataCache.resolvedLinks;
   let count = 0;
@@ -136,7 +150,9 @@ export class PropertiesBadge {
   }
 
   onload(): void {
-    this.observer = new MutationObserver(() => this.scheduleRefresh());
+    this.observer = new MutationObserver((mutations) => {
+      if (mutations.some(affectsProperties)) this.scheduleRefresh();
+    });
     this.observer.observe(document.body, { childList: true, subtree: true });
     this.resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) this.updateScrolling(entry.target as HTMLElement);
