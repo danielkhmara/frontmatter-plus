@@ -16,14 +16,12 @@ const en: Dict = {
   updatedKey: "Updated date key",
   updatedKeyDesc: "YAML field name used to store the file update date and time.",
   dateFormat: "Date and time format",
-  dateFormatDesc: "Date and time formatting uses the Moment.js JavaScript library.",
   createDelay: "Delay after file creation",
   createDelayDesc:
     "Time in milliseconds (1000 ms = 1 second) before the creation date and time are written to the selected YAML field.",
   updateDelay: "Delay after file update",
   updateDelayDesc:
     "Time in milliseconds (1000 ms = 1 second) before the update date and time are written to the selected YAML field.",
-  msHint: "Use milliseconds only (1000 ms = 1 second).",
   triggersTitle: "Behavior rules",
   autoInsertCreated: "Add created to new files",
   autoInsertUpdated: "Add updated to new files",
@@ -158,15 +156,12 @@ const de: Dict = {
   updatedKeyDesc:
     "Name des YAML-Felds für Datum und Uhrzeit der Dateiaktualisierung.",
   dateFormat: "Datums- und Zeitformat",
-  dateFormatDesc:
-    "Für Datum und Uhrzeit wird die JavaScript-Bibliothek Moment.js verwendet.",
   createDelay: "Verzögerung nach dem Erstellen",
   createDelayDesc:
     "Zeit in Millisekunden (1000 ms = 1 Sekunde), nach der Erstellungsdatum und -uhrzeit ins gewählte YAML-Feld geschrieben werden.",
   updateDelay: "Verzögerung nach dem Aktualisieren",
   updateDelayDesc:
     "Zeit in Millisekunden (1000 ms = 1 Sekunde), nach der Aktualisierungsdatum und -uhrzeit ins gewählte YAML-Feld geschrieben werden.",
-  msHint: "Nur in Millisekunden angeben (1000 ms = 1 Sekunde).",
   triggersTitle: "Verhaltensregeln",
   autoInsertCreated: "created in neuen Dateien hinzufügen",
   autoInsertUpdated: "updated in neuen Dateien hinzufügen",
@@ -300,14 +295,12 @@ const zh: Dict = {
   updatedKey: "更新日期键名",
   updatedKeyDesc: "用于写入文件更新日期和时间的 YAML 字段名。",
   dateFormat: "日期和时间格式",
-  dateFormatDesc: "日期和时间格式化使用 JavaScript 库 Moment.js。",
   createDelay: "创建文件后的延迟",
   createDelayDesc:
     "以毫秒为单位的时间（1000 毫秒 = 1 秒），经过该时间后将创建日期和时间写入所选 YAML 字段。",
   updateDelay: "更新文件后的延迟",
   updateDelayDesc:
     "以毫秒为单位的时间（1000 毫秒 = 1 秒），经过该时间后将更新日期和时间写入所选 YAML 字段。",
-  msHint: "仅使用毫秒（1000 毫秒 = 1 秒）。",
   triggersTitle: "行为规则",
   autoInsertCreated: "向新文件添加 created",
   autoInsertUpdated: "向新文件添加 updated",
@@ -437,15 +430,12 @@ const fr: Dict = {
   updatedKeyDesc:
     "Nom du champ YAML utilisé pour enregistrer la date et l’heure de mise à jour du fichier.",
   dateFormat: "Format de date et d’heure",
-  dateFormatDesc:
-    "Le formatage de la date et de l’heure utilise la bibliothèque JavaScript Moment.js.",
   createDelay: "Délai après la création",
   createDelayDesc:
     "Durée en millisecondes (1000 ms = 1 seconde) avant d’écrire la date et l’heure de création dans le champ YAML choisi.",
   updateDelay: "Délai après la mise à jour",
   updateDelayDesc:
     "Durée en millisecondes (1000 ms = 1 seconde) avant d’écrire la date et l’heure de mise à jour dans le champ YAML choisi.",
-  msHint: "Indiquez uniquement des millisecondes (1000 ms = 1 seconde).",
   triggersTitle: "Règles de comportement",
   autoInsertCreated: "Ajouter created aux nouveaux fichiers",
   autoInsertUpdated: "Ajouter updated aux nouveaux fichiers",
@@ -581,15 +571,12 @@ const ru: Dict = {
   updatedKeyDesc:
     "Задайте имя YAML-поля, куда будет записываться дата и время обновления файла.",
   dateFormat: "Формат даты и времени",
-  dateFormatDesc:
-    "Для работы с датой и временем используется JavaScript-библиотека Moment.js.",
   createDelay: "Задержка после создания файла",
   createDelayDesc:
     "Время в миллисекундах (1000 мс = 1 секунда), через которое автоматически вносится дата и время создания файла в указанное YAML-поле.",
   updateDelay: "Задержка после обновления файла",
   updateDelayDesc:
     "Время в миллисекундах (1000 мс = 1 секунда), через которое автоматически вносится дата и время обновления файла в указанное YAML-поле.",
-  msHint: "Указывается только в миллисекундах (1000 мс = 1 секунда).",
   triggersTitle: "Правила поведения",
   autoInsertCreated: "Добавлять created в новые файлы",
   autoInsertUpdated: "Добавлять updated в новые файлы",
