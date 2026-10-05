@@ -82,6 +82,9 @@ const en: Dict = {
   tasksIndicator: "Completed tasks",
   tasksIndicatorDesc:
     "Finds all checkboxes in the note and shows completed tasks versus the total. Hidden when there are no checkboxes.",
+  backlinksIndicator: "Backlinks",
+  backlinksIndicatorDesc:
+    "Shows how many other files link to the open file. Each linking file is counted once, and only existing files are checked via the resolvedLinks index.",
   isolatedIndicator: "Isolated file label",
   isolatedIndicatorDesc:
     "Shows an Isolated label when the file has no incoming or outgoing links to other files. Uses only existing files via the resolvedLinks index. Appears when no connections are found.",
@@ -122,6 +125,7 @@ const en: Dict = {
   indicatorYaml: "YAML {n}%",
   indicatorStale: "Stale {n}d",
   indicatorTasks: "{done} of {total} tasks",
+  indicatorBacklinks: "Backlinks: {n}",
   indicatorIsolated: "Isolated",
   indicatorYamlError: "YAML error",
   sizeB: "{n} B",
@@ -214,6 +218,9 @@ const de: Dict = {
   tasksIndicator: "Erledigte Aufgaben",
   tasksIndicatorDesc:
     "Findet alle Kontrollkästchen in der Notiz und zeigt erledigte Aufgaben im Verhältnis zur Gesamtzahl. Wird ausgeblendet, wenn keine Kontrollkästchen vorhanden sind.",
+  backlinksIndicator: "Rückverweise",
+  backlinksIndicatorDesc:
+    "Zeigt, wie viele andere Dateien auf die geöffnete Datei verlinken. Jede verlinkende Datei wird einmal gezählt, geprüft werden nur vorhandene Dateien über den Index resolvedLinks.",
   isolatedIndicator: "Kennzeichnung isolierter Dateien",
   isolatedIndicatorDesc:
     "Zeigt „Isoliert“, wenn die Datei keine eingehenden oder ausgehenden Links zu anderen Dateien hat. Prüft nur vorhandene Dateien über den Index resolvedLinks. Erscheint, wenn keine Verbindung gefunden wird.",
@@ -254,6 +261,7 @@ const de: Dict = {
   indicatorYaml: "YAML {n}%",
   indicatorStale: "Veraltet {n} T.",
   indicatorTasks: "{done} von {total} Aufgaben",
+  indicatorBacklinks: "Rückverweise: {n}",
   indicatorIsolated: "Isoliert",
   indicatorYamlError: "YAML-Fehler",
   sizeB: "{n} B",
@@ -339,6 +347,9 @@ const zh: Dict = {
   tasksIndicator: "已完成任务",
   tasksIndicatorDesc:
     "查找笔记中的所有复选框，并显示已完成任务与总数的比例。没有复选框时不显示。",
+  backlinksIndicator: "反向链接",
+  backlinksIndicatorDesc:
+    "显示有多少其他文件链接到当前打开的文件。每个链接文件只计算一次，并且仅通过 resolvedLinks 索引检查已存在的文件。",
   isolatedIndicator: "孤立文件标记",
   isolatedIndicatorDesc:
     "当文件没有指向其他文件的出站或入站链接时，显示「孤立」标记。仅通过 resolvedLinks 索引检查已存在的文件；未找到连接时显示。",
@@ -377,6 +388,7 @@ const zh: Dict = {
   indicatorYaml: "YAML {n}%",
   indicatorStale: "过期 {n} 天",
   indicatorTasks: "{done}/{total} 任务",
+  indicatorBacklinks: "反向链接 {n}",
   indicatorIsolated: "孤立",
   indicatorYamlError: "YAML 错误",
   sizeB: "{n} B",
@@ -469,6 +481,9 @@ const fr: Dict = {
   tasksIndicator: "Tâches terminées",
   tasksIndicatorDesc:
     "Repère toutes les cases à cocher de la note et affiche les tâches terminées par rapport au total. Masqué s’il n’y a aucune case à cocher.",
+  backlinksIndicator: "Rétroliens",
+  backlinksIndicatorDesc:
+    "Indique combien d’autres fichiers renvoient vers le fichier ouvert. Chaque fichier est compté une seule fois, et seuls les fichiers existants sont vérifiés via l’index resolvedLinks.",
   isolatedIndicator: "Marquage des fichiers isolés",
   isolatedIndicatorDesc:
     "Affiche le marquage «\u00a0Isolé\u00a0» si le fichier n’a ni liens entrants ni liens sortants vers d’autres fichiers. Vérifie uniquement les fichiers existants via l’index resolvedLinks. Apparaît lorsqu’aucune connexion n’est trouvée.",
@@ -509,6 +524,7 @@ const fr: Dict = {
   indicatorYaml: "YAML {n}%",
   indicatorStale: "Obsolète {n} j",
   indicatorTasks: "{done} sur {total} tâches",
+  indicatorBacklinks: "Rétroliens : {n}",
   indicatorIsolated: "Isolé",
   indicatorYamlError: "Erreur YAML",
   sizeB: "{n} o",
@@ -602,6 +618,9 @@ const ru: Dict = {
   tasksIndicator: "Подсчет выполненных задач",
   tasksIndicatorDesc:
     "Находит в заметке все чекбоксы и показывает соотношение выполненных задач к их общему количеству. Информация не выводится, если чекбоксы отсутствуют.",
+  backlinksIndicator: "Обратные ссылки",
+  backlinksIndicatorDesc:
+    "Показывает, сколько других файлов ссылается на открытый файл. Каждый ссылающийся файл учитывается один раз, проверка идет только по существующим файлам через индекс resolvedLinks.",
   isolatedIndicator: "Пометка изолированных файлов",
   isolatedIndicatorDesc:
     "Выводит метку «Изолирован», если у файла отсутствуют входящие и исходящие ссылки на другие файлы. Проверка идет только по существующим файлам через индекс resolvedLinks. Метка отображается, когда не найдено ни одной связи.",
@@ -642,6 +661,7 @@ const ru: Dict = {
   indicatorYaml: "YAML {n}%",
   indicatorStale: "Устарел {n} дн.",
   indicatorTasks: "{done} из {total} задач",
+  indicatorBacklinks: "Обратных ссылок: {n}",
   indicatorIsolated: "Изолирован",
   indicatorYamlError: "Ошибка в YAML",
   sizeB: "{n} Б",

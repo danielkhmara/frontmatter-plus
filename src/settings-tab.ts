@@ -477,6 +477,16 @@ export class FrontmatterPlusSettingTab extends PluginSettingTab {
         })
       );
 
+    new Setting(badge)
+      .setName(this.tr("backlinksIndicator"))
+      .setDesc(this.tr("backlinksIndicatorDesc"))
+      .addToggle((toggle) =>
+        toggle.setValue(this.plugin.settings.showBacklinks).onChange(async (value) => {
+          this.plugin.settings.showBacklinks = value;
+          await this.plugin.saveSettings();
+        })
+      );
+
     const isolated = new Setting(badge)
       .setName(this.tr("isolatedIndicator"))
       .setDesc(this.tr("isolatedIndicatorDesc"))

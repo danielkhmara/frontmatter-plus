@@ -34,6 +34,7 @@ export interface FrontmatterPlusSettings {
   staleAfterDays: number;
   showFocusTimer: boolean;
   showTasks: boolean;
+  showBacklinks: boolean;
   showIsolated: boolean;
   wordsPerMinute: number;
   folderTemplates: FolderTemplateRule[];
@@ -65,6 +66,7 @@ export const DEFAULT_SETTINGS: FrontmatterPlusSettings = {
   staleAfterDays: 30,
   showFocusTimer: true,
   showTasks: false,
+  showBacklinks: false,
   showIsolated: false,
   wordsPerMinute: 200,
   folderTemplates: [],

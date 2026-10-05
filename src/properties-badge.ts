@@ -94,6 +94,15 @@ function readLinkMap(value: unknown): Record<string, Record<string, number>> {
   return out;
 }
 
+function countBacklinks(plugin: FrontmatterPlusPlugin, file: TFile): number {
+  const resolved: Record<string, Record<string, number>> = plugin.app.metadataCache.resolvedLinks;
+  let count = 0;
+  for (const source of Object.keys(resolved)) {
+    if (source !== file.path && (resolved[source][file.path] ?? 0) > 0) count += 1;
+  }
+  return count;
+}
+
 function isLinkIsolated(plugin: FrontmatterPlusPlugin, file: TFile): boolean {
   const resolvedRaw: unknown = plugin.app.metadataCache.resolvedLinks;
   const resolved = readLinkMap(resolvedRaw);
@@ -321,6 +330,10 @@ export class PropertiesBadge {
       if (tasks) {
         parts.push(tf(locale, "indicatorTasks", { done: tasks.done, total: tasks.total }));
       }
+    }
+
+    if (s.showBacklinks) {
+      parts.push(tf(locale, "indicatorBacklinks", { n: countBacklinks(this.plugin, file) }));
     }
 
     if (s.showIsolated && isLinkIsolated(this.plugin, file)) {

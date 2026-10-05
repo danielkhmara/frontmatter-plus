@@ -169,6 +169,10 @@ export default class FrontmatterPlusPlugin extends Plugin {
           ? data.showFocusTimer
           : DEFAULT_SETTINGS.showFocusTimer,
       showTasks: typeof data.showTasks === "boolean" ? data.showTasks : DEFAULT_SETTINGS.showTasks,
+      showBacklinks:
+        typeof data.showBacklinks === "boolean"
+          ? data.showBacklinks
+          : DEFAULT_SETTINGS.showBacklinks,
       showIsolated:
         typeof data.showIsolated === "boolean" ? data.showIsolated : DEFAULT_SETTINGS.showIsolated,
       wordsPerMinute:
